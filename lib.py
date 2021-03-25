@@ -7,5 +7,8 @@ def print_name2():
 def print_name3(a):
     print(a)
 
+def pirnt_xx():
+    print('xxxx')
+
 if __name__ == '__main__':
     print_name3(100)
