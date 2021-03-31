@@ -19,8 +19,18 @@ class Regressor:
             if param in self.parameter_names:
                 self.clustering_parameters.append(param)
 
+    def is_unchanged_input(self, y) -> bool:
+        for i in range(0, len(y) - 1):
+            if y[i] != y[i+1]:
+               return False
+        return True
+    
     def fit_row(self, x, y): # x,y are np.array
         result = {}
+        if self.is_unchanged_input(y):
+            result['parameters'] = [np.nan] * len(self.parameter_names)
+            result['r2'] = np.nan
+            return result
         params_opt, pcov = curve_fit(self.regression_func, x, y)
         result['parameters'] = params_opt
 
@@ -40,7 +50,7 @@ class Regressor:
         # for each row
         for i in range(len(data)):
             # Only select session scores
-            row_y = data.iloc[i, 0:10].dropna()
+            row_y = np.array(data.iloc[i, 1:11].dropna(), dtype=np.float)
             row_x = range(1, len(row_y) + 1)
             result = self.fit_row(row_x, row_y)
             fit_scores.append(result['r2'])
@@ -85,12 +95,6 @@ class PiecewiselinRegressor(Regressor):
         max_r2 = max(r2_all_knots.values())
         opt_knot = [key for key in r2_all_knots if r2_all_knots[key] == max_r2]
         return opt_knot
-
-    def is_unchanged_input(self, y) -> bool:
-        for i in range(0, len(y) - 1):
-            if y[i] != y[i+1]:
-               return False
-        return True
 
     def fit_row(self, x, y):
         result = {}
