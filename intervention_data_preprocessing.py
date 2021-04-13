@@ -4,8 +4,6 @@ from cluster import ClusterModel
 import numpy as np
 import re as re
 
-
-
 class InterventionProcessor:
     @staticmethod
     def get_intervention_data(no_missing_data: DataFrame, intervention_col_names: list[str]) -> DataFrame:
@@ -26,12 +24,10 @@ class InterventionProcessor:
 
     def get_max(self):
         self.generated_col_names.add('max')
-        self.clustering_col_names.add('max')
         self.data['max'] = self.get_only_intervention_data().max(axis=1, skipna=True, numeric_only=True) 
     
     def get_std(self):
         self.generated_col_names.add('std')
-        self.clustering_col_names.add('std')
         self.data['std'] = self.get_only_intervention_data().std(axis=1, skipna=True, numeric_only=True)
 
     def get_max_session(self):
@@ -55,7 +51,6 @@ class InterventionProcessor:
         for r in self.regressors:
             result = r.fit(self.data)
             self.generated_col_names.update(r.parameter_names)
-            self.clustering_col_names.update(r.clustering_parameters)
             print('The mean r2 for {} is: {:.3f}'.format(type(r), np.nanmean(result)))
 
     def mark_outlier(self, option: list[str]):
@@ -72,11 +67,16 @@ class InterventionProcessor:
                     self.data['outlier'].iloc[i] = True
         print(self.data[self.data['outlier']])
 
+    def delete_outlier(self):
+        self.data = self.data[self.data['outlier']==0]
+        print('The sample size after delete outlier: {}'.format(len(self.data)))
+
     def register_cluster_model(self, cluster: ClusterModel):
         self.clustering_model = cluster
 
     def cluster(self):
-        for col in self.clustering_model.clustering_col_names:
+        self.clustering_col_names.update(self.clustering_model.clustering_col_names)
+        for col in self.clustering_col_names:
             if col not in self.generated_col_names:
                 print('This column has not be generated:{}'.format(col))
                 continue

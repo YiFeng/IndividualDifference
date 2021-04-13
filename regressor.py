@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy import log
 import pwlf
+import individual_differences_plot as plot
 
 # Base Regressor. Do not use. Use Derived Regressors.
 class Regressor:
@@ -25,7 +26,7 @@ class Regressor:
                return False
         return True
     
-    def fit_row(self, x, y): # x,y are np.array
+    def fit_row(self, x, y, index): # x,y are np.array
         result = {}
         if self.is_unchanged_input(y):
             result['parameters'] = [np.nan] * len(self.parameter_names)
@@ -52,10 +53,11 @@ class Regressor:
             # Only select session scores
             row_y = np.array(data.iloc[i, 1:11].dropna(), dtype=np.float)
             row_x = range(1, len(row_y) + 1)
-            result = self.fit_row(row_x, row_y)
+            result = self.fit_row(row_x, row_y, i)
             fit_scores.append(result['r2'])
             for j in range(len(self.parameter_names)):
                 data.iat[i, j - len(self.parameter_names)] = result['parameters'][j]
+        data['r2'] = fit_scores
         return fit_scores
 
 class LogRegressor(Regressor):
@@ -96,7 +98,7 @@ class PiecewiselinRegressor(Regressor):
         opt_knot = [key for key in r2_all_knots if r2_all_knots[key] == max_r2]
         return opt_knot
 
-    def fit_row(self, x, y):
+    def fit_row(self, x, y, index):
         result = {}
         if self.is_unchanged_input(y):
             result['parameters'] = [np.nan] * len(self.parameter_names)
@@ -106,6 +108,7 @@ class PiecewiselinRegressor(Regressor):
         pwlf_each_row = pwlf.PiecewiseLinFit(x, y)
         pwlf_each_row.fit_with_breaks_opt([opt_knot])
         slopes = pwlf_each_row.calc_slopes()
+        # plot.piecewise_lin_plot(x,y,pwlf_each_row, index)
         result['parameters'] = np.insert(slopes, 0, opt_knot)
         result['r2'] = pwlf_each_row.r_squared()
         return result

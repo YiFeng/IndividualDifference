@@ -3,8 +3,8 @@ from pandas import DataFrame
 
 # Features that are used for training
 feature_col_names: list[str] = [
-    'Sleep','SES','VGQHoursSumPastYear','CFQ', 'TCA','Workmastery','Grit', 'Ambition','PSS', 'Competitiveness',\
-    'MRpre', 'IC_pre', 'WM_pre', 'Updating_acc_zscore',\
+    'SES','VGQ','CFQ', 'Grit_Ambition',\
+    'MRpre', 'DM_diff_pre', 'WM_pre', 'Updating_pre',\
     'Person_extraver', 'Person_agreeable', 'Person_conscien', 'Person_emot', 'Person_opennes']
 
 def read_raw_data(filename: str) -> DataFrame:
