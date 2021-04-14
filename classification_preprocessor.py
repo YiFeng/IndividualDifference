@@ -54,7 +54,7 @@ class ClassifyPreprocessor:
                                   self.data[feature][self.data['label'] == 1],
                                   self.data[feature][self.data['label'] == 2])
             print('The F test result for {}: f:{:.3f}, p:{:.3f}'.format(feature, f, p))
-        plot.bar_plot_cluster(self.data, self.feature_numerical_names)
+        # plot.bar_plot_cluster(self.data, self.feature_numerical_names)
 	    
     def feature_selection(self, k: int):
         x, y = self.transform_df_toarray(self.feature_numerical_names)

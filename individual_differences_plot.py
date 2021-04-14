@@ -3,6 +3,8 @@ import numpy as np
 import pandas as pd
 from pandas import DataFrame
 import seaborn as sns
+import itertools
+from yellowbrick.model_selection import LearningCurve
 
 plot_folder_loc = '/datasets/googledrive/Yi_UCI_research/GSR other works/2020 Summer_predict individual training/plot'
 colors = ['#4285F4','#DB4437','#F4B400','#0F9D58','m', 'y', 'k', 'w']
@@ -95,3 +97,41 @@ def cate_bar_plot(data: DataFrame, plot_col: list[str]):
         df_plot = data.groupby(['label', feature]).size().reset_index().pivot(columns='label', index=feature, values=0)
         df_plot.plot(kind='bar', stacked=True)
         plt.show()
+
+# confusion matrix
+def plot_confusion_matrix(classifier_name, cm, classes, normalize=True):
+    plt.figure(figsize=(10,6))
+    cmap = plt.cm.Blues
+    title = "Confusion Matrix"
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        cm = np.around(cm, decimals=3)
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+      plt.text(j, i, cm[i, j],
+               horizontalalignment="center",
+               color="black") 
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.title(classifier_name)
+
+def plot_error_confusion(cm):
+    row_sums = cm.sum(axis=1, keepdims=True)
+    norm_conf_mx = cm / row_sums
+    np.fill_diagonal(norm_conf_mx, 0)
+    plt.matshow(norm_conf_mx, cmap=plt.cm.gray)
+    plt.show()
+
+# learning curve
+def plot_learning_curve(classifier, cv, X, Y):
+    sizes = np.linspace(0.3, 1.0, 10)
+    visualizer = LearningCurve(classifier, cv=cv, scoring='f1_weighted', train_sizes=sizes, n_jobs=4)
+    visualizer.fit(X, Y)        # Fit the data to the visualizer
+    visualizer.show()           # Finalize and render the figure
