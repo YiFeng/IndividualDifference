@@ -66,7 +66,7 @@ class ClassificationProcessor():
         plot.plot_error_confusion(cfm)
         
         # plot learning curve
-        plot.plot_learning_curve(classifier, cross_validation, complete_x, complete_y)
+        plot.plot_learning_curve(classifier, classifier_name, complete_x, complete_y, cross_validation)
     
     def model_selection(self):
         for name, clf in zip(names, classifiers):
