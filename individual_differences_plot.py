@@ -5,9 +5,11 @@ from pandas import DataFrame
 import seaborn as sns
 import itertools
 import learning_curve as lc
-
+from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+        
 plot_folder_loc = '/datasets/googledrive/Yi_UCI_research/GSR other works/2020 Summer_predict individual training/plot'
 colors = ['#4285F4','#DB4437','#F4B400','#0F9D58','m', 'y', 'k', 'w']
+cmap = ListedColormap(colors)
 
 # plots about intervention data clustering
 # piecewise lin plot
@@ -23,10 +25,10 @@ def piecewise_lin_plot(x,y, pwlf, index):
     plt.savefig(plot_folder_loc + '/piece_wise/fit_' + str(index) + '.png')
 
 # plot cluster result
-def plot_cluster_result(data: DataFrame, intervention_col_names: list[str]):
+def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], column_name: str):
     df_cluster_type_list = []
-    for i in range(len(data['label'].unique())):
-        t = data[data['label'] == i][intervention_col_names]
+    for i in range(len(data[column_name].unique())):
+        t = data[data[column_name] == i][intervention_col_names]
         df_cluster_type_list.append(t)
         # each cluster plot
         fig, ax = plt.subplots(figsize=(9,4))
@@ -134,3 +136,24 @@ def plot_error_confusion(cm):
 # learning curve
 def plot_learning_curve(classifier, classifier_name, X, Y, cv):
     lc.plot_learning_curve(classifier, classifier_name, X, Y, None, (0, 1.5), cv, -1)
+
+# feature selection curve for each class
+def plot_feature_selection_curve(feature_selection_result: dict):
+    fig, ax = plt.subplots(figsize=(9,10))
+    x = feature_selection_result.keys()
+    for i in range(3):
+        y = [item[i] for item in feature_selection_result.values()]
+        plt.plot(x, y, color=colors[i], label='Class'+str(i))
+    ax.set_xlabel('Num of features', fontsize=20)
+    ax.set_ylabel('Accuracy', fontsize=20)
+    ax.legend(fontsize=20, loc=2)
+
+def scatter_plot_shap(x, y, class_index, x_name):
+    fig, ax = plt.subplots(figsize=(9,10))
+    label = 'cluster_' + str(class_index)
+    ax.scatter(x,y,c=colors[class_index], label=label)
+    ax.set_xlabel(x_name, fontsize=20)
+    ax.set_ylabel('Shap value', fontsize=20)
+    ax.legend(fontsize=20)
+    # ax.set_title(cluster_result, fontsize=24)
+    fig.show()

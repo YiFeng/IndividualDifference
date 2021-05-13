@@ -13,6 +13,8 @@ from collections import Counter
 from imblearn.over_sampling import SMOTE
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
+import pickle
+import os.path as path
 
 
 class ClassifyPreprocessor:
@@ -29,11 +31,11 @@ class ClassifyPreprocessor:
         self.data: DataFrame = self.combine_cluster_feature(cluster_result, feature_preprocessed)
         self.feature_numerical_names = rdp.feature_col_names.copy()
         self.feature_names = rdp.feature_col_names.copy()
+        self.data_length = None
     
     def transform_df_toarray(self, col_names):
         x = pd.get_dummies(self.data[col_names]).to_numpy()
         y = self.data['label'].to_numpy()
-        print(x.shape)
         return x, y
 
     def delete_outlier(self):
@@ -46,6 +48,7 @@ class ClassifyPreprocessor:
                 outlier_index.append(i)
         self.data.drop(index = self.data.iloc[outlier_index].index, inplace=True)
         print('The samplesize after delete outliers: {}'.format(len(self.data)))
+        print('The sample weight after delete outliers: {}'.format(Counter(self.data['label'])))
         
     def feature_test(self):
         # f test for numerical features
@@ -54,7 +57,7 @@ class ClassifyPreprocessor:
                                   self.data[feature][self.data['label'] == 1],
                                   self.data[feature][self.data['label'] == 2])
             print('The F test result for {}: f:{:.3f}, p:{:.3f}'.format(feature, f, p))
-        # plot.bar_plot_cluster(self.data, self.feature_numerical_names)
+        plot.bar_plot_cluster(self.data, self.feature_numerical_names)
 	    
     def feature_selection(self, k: int):
         x, y = self.transform_df_toarray(self.feature_numerical_names)
@@ -71,17 +74,31 @@ class ClassifyPreprocessor:
     
     def use_categorical_features(self):
         for i, feature in enumerate(self.feature_names):
-            if feature == 'SES' or feature == 'VGQ':
+            if feature == 'z_SES' or feature == 'VGQ_pastyear':
                 self.feature_names[i] = feature + '_category'
         print('Use these features: {}'.format(self.feature_names))
     
     def resample_standardize(self, sample_weight: dict[int,int]):
         x, y = self.transform_df_toarray(self.feature_names)
+        self.data_length = len(y)
         print('The sample weight before resample: {}'.format(Counter(y)))
         oversample = SMOTE(sampling_strategy=sample_weight, random_state=42)
         features_resample, labels_resample = oversample.fit_resample(x, y)
         print('The sample weight after resample: {}'.format(Counter(labels_resample)))
         # Standardize
         scaler = StandardScaler()
-        return scaler.fit_transform(features_resample), labels_resample
+        return scaler.fit_transform(features_resample), labels_resample, self.data_length, self.feature_names
 
+    def save_data(self, X, Y, orig_len: int, feature_names, data_path: str):
+        with open(path.join(data_path, "input_x.array"), mode='wb') as f:
+            pickle.dump(X, f)
+            f.close()
+        with open(path.join(data_path, "input_y.array"), mode='wb') as f:
+            pickle.dump(Y, f)
+            f.close()
+        with open(path.join(data_path, "original_len.int"), mode='wb') as f:
+            pickle.dump(orig_len, f)
+            f.close()
+        with open(path.join(data_path, "feature_names.list"), mode='wb') as f:
+            pickle.dump(feature_names, f)
+            f.close()

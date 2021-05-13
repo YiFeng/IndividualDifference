@@ -3,6 +3,11 @@ from regressor import Regressor
 from cluster import ClusterModel
 import numpy as np
 import re as re
+from scipy import stats
+import statsmodels
+from statsmodels.stats.stattools import medcouple
+import math
+from math import e
 
 class InterventionProcessor:
     @staticmethod
@@ -24,25 +29,21 @@ class InterventionProcessor:
 
     def get_max(self):
         self.generated_col_names.add('max')
-        self.data['max'] = self.get_only_intervention_data().max(axis=1, skipna=True, numeric_only=True) 
+        self.data['max'] = self.get_only_intervention_data().max(axis=1, skipna=True, numeric_only=True)
+        print('The mean of max is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
     
     def get_std(self):
         self.generated_col_names.add('std')
         self.data['std'] = self.get_only_intervention_data().std(axis=1, skipna=True, numeric_only=True)
-
+        print('The mean of std is {:.3f} with sd {:.3f}'.format(self.data['std'].mean(), self.data['std'].std()))
+        
     def get_max_session(self):
         self.generated_col_names.add('max_session') 
         self.data['max_session'] = self.get_only_intervention_data().idxmax(axis=1)
 
-    def delete_crazy_sub(self):
-        print('The sample size before delete crazy sub: {}'.format(len(self.data)))
-        self.data = self.data[self.data['max'] < 15][self.data['std'] !=0]
-        print('The sample size after delete crazy sub: {}'.format(len(self.data)))
-
     def basic_analyze(self):
         self.get_max()            
         self.get_std()
-        self.delete_crazy_sub()
     
     def register_regressor(self, reg: Regressor):
         self.regressors.append(reg)
@@ -52,8 +53,33 @@ class InterventionProcessor:
             result = r.fit(self.data)
             self.generated_col_names.update(r.parameter_names)
             print('The mean r2 for {} is: {:.3f}'.format(type(r), np.nanmean(result)))
-
-    def mark_outlier(self, option: list[str]):
+            print('The num of aubjects can not fit by pwlf: {}'.format(self.data.isna().sum()))
+            self.data = self.data.dropna(subset=['r2'])
+            print('The sample size that can fit with pwlf: {}'.format(len(self.data)))
+    
+    def mark_outlier_stewd(self, option: list[str]):
+        self.data['outlier'] = False
+        for col in option:
+            if col not in self.data.columns:
+                print('This column does not exsit: {}'.format(col))
+                continue
+            # med = stats.median_absolute_deviation(self.data[col])
+            # median = self.data[col].median()
+            print('The skew of {} is {:.3f}'.format(col, self.data[col].skew()))
+            q1 = self.data[col].quantile(0.25)
+            q3 = self.data[col].quantile(0.75)
+            iqr = q3 -q1
+            mc = medcouple(self.data[col])
+            print('{}:MC={:.3f}'.format(col, mc))
+            up = q3 + 1.5* (math.exp(4*mc)) *iqr
+            down = q1 - 1.5* (math.exp(-3*mc)) *iqr
+            print('interval of {} is {} to {}'.format(col, up, down))
+            for i in range(len(self.data)):
+                if self.data[col].iloc[i] >up or self.data[col].iloc[i] <down:
+                    self.data['outlier'].iloc[i] = True
+            print(self.data[self.data['outlier']])
+    
+    def mark_outlier_zscore(self, option: list[str]):
         self.data['outlier'] = False
         for col in option:
             if col not in self.data.columns:
@@ -63,7 +89,7 @@ class InterventionProcessor:
             std = self.data[col].std()
             for i in range(len(self.data)):
                 z_score = (self.data[col].iloc[i] - mean)/std
-                if z_score >3 or z_score <-3:
+                if z_score >2 or z_score <-2:
                     self.data['outlier'].iloc[i] = True
         print(self.data[self.data['outlier']])
 

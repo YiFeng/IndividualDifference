@@ -79,13 +79,13 @@ class LinearRegressor(Regressor):
 class PiecewiselinRegressor(Regressor):
     def __init__(self, clustering_parameters: list[str] = None):
         Regressor.__init__(self)
-        self.parameter_names = ['knot', 'slope1', 'slope2']
+        self.parameter_names = ['knot', 'slope1', 'slope2','turning_value']
         self.clustering_parameters = []
         self.set_clustering_parameters(clustering_parameters)
     
     # Use a library based on https://jekel.me/piecewise_linear_fit_py/pwlf.html
     # Before running, pip install pwlf
-    def find_opt_knot(self, x, y) -> int:
+    def find_opt_knot(self, x, y) -> list[int]:
         # Set different knot locations
         pwlf_each_row = pwlf.PiecewiseLinFit(x, y)
         r2_all_knots = {}
@@ -105,10 +105,12 @@ class PiecewiselinRegressor(Regressor):
             result['r2'] = np.nan
             return result
         opt_knot = self.find_opt_knot(x, y)
+        turning_value = y[opt_knot[0]-1]
         pwlf_each_row = pwlf.PiecewiseLinFit(x, y)
         pwlf_each_row.fit_with_breaks_opt([opt_knot])
         slopes = pwlf_each_row.calc_slopes()
         # plot.piecewise_lin_plot(x,y,pwlf_each_row, index)
         result['parameters'] = np.insert(slopes, 0, opt_knot)
+        result['parameters'] = np.append(result['parameters'], turning_value)
         result['r2'] = pwlf_each_row.r_squared()
         return result

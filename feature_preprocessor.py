@@ -32,9 +32,10 @@ class FeatureProcessor:
     # Discretize continuous features
     def discretize_features(self):
         # sleep, score > 11 means the level of sleepiness may impact a person’s activities 
-        self.data['SES_category'] = pd.cut(x = self.data['SES'], bins = [-1,10,13,22], labels = ['low_ses', 'middle_ses', 'high_ses'])
+        self.data['z_SES_category'] = pd.cut(x = self.data['z_SES'], bins = [-1.8,-0.5,0.8,2], labels = ['low_ses', 'middle_ses', 'high_ses'])
         # vgq, >20h means play more vg in the past year
-        self.data['VGQ_category'] = pd.cut(x = self.data['VGQ'], bins = [-1,20,50], labels = ['less_play', 'more_play'])
+        median = self.data['VGQ_pastyear'].median()
+        self.data['VGQ_pastyear_category'] = pd.cut(x = self.data['VGQ_pastyear'], bins = [5,median,32], labels = ['less_play', 'more_play'])
         self.feature_cate_names = ['SES_category', 'VGQ_category']
 
 # Feature F test (for numrical features)
