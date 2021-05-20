@@ -38,7 +38,7 @@ names = ['Logitic Reg', 'Nearest Neighbors',
 classifiers = [
     LogisticRegression(random_state=0, solver='liblinear'),
     KNeighborsClassifier(n_neighbors=6, weights='distance'),
-    RandomForestClassifier(max_depth=5, class_weight='balanced'),
+    RandomForestClassifier(max_depth=5, class_weight='balanced_subsample', random_state=0),
     MLPClassifier(hidden_layer_sizes=(13,),solver='lbfgs')]
 
 dict_models = dict(zip(names, classifiers))
@@ -59,12 +59,12 @@ import shap
 import pickle
 import os.path as path
 def read_inputs(data_path, file_names):
-    output = {}
+    output = []
     for each_file in file_names:
         with open(path.join(data_path, each_file), mode='rb') as f:
-            output[each_file] = pickle.load(f)
+            output.append(pickle.load(f))
             f.close()
-    return output.values()
+    return output
 
 def save_data(data_path, data, file_name):
     with open(path.join(data_path, file_name), mode='wb') as f:
@@ -105,7 +105,7 @@ class ClassificationProcessor():
         
             # plot learning curve
             plot.plot_learning_curve(classifier, classifier_name, complete_x, complete_y, cross_validation)
-        return cfm[0][0]/cfm[0].sum(), cfm[1][1]/cfm[1].sum(), cfm[2][2]/cfm[2].sum(), accuracies, pred_y # return acc for class 0,1,2
+        return cfm[0][0]/cfm[0].sum(), cfm[1][1]/cfm[1].sum(), cfm[2][2]/cfm[2].sum(), accuracies, pred_y, prob_y, kappa # return acc for class 0,1,2
     
     # get a stacking ensemble of models
     def get_stacking(self):
@@ -123,7 +123,7 @@ class ClassificationProcessor():
     def model_selection(self, feature_num: int):
         for name, clf in self.models.items():
             try:
-              self.train_evaluate_model(name, clf, loo, self.X[:, 0:feature_num], self.Y, True)
+              self.train_evaluate_model(name, clf, skf, self.X[:, 0:feature_num], self.Y, True)
             except Exception as e:
               print('{}: got error: {}'.format(name, traceback.format_exc()))
     
@@ -132,7 +132,7 @@ class ClassificationProcessor():
         feature_selection_result = {}
         for i in range(1,15):
             X = self.X[:, 0:i]
-            class0_acc, class1_acc, class2_acc, accuracies, pred_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, loo, X, self.Y, False)
+            class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, loo, X, self.Y, False)
             feature_selection_result[i] = [class0_acc, class1_acc, class2_acc]
         plot.plot_feature_selection_curve(feature_selection_result)
     
@@ -140,7 +140,7 @@ class ClassificationProcessor():
         # create object
         model = self.models[model_name]
         efs = EFS(model, min_features=1,
-           max_features=14,scoring='accuracy',print_progress=True,cv=skf)
+           max_features=10,scoring='accuracy',print_progress=True,cv=skf)
         efs = efs.fit(self.X, self.Y, custom_feature_names=self.feature_names)
         # print selected features
         best_idx = efs.best_idx_
@@ -151,10 +151,10 @@ class ClassificationProcessor():
         self.used_feature_indx = best_idx
     
     def final_model(self, model_name: str, feature_list: list[int]):
-        class0_acc, class1_acc, class2_acc, accuracies, pred_y = self.train_evaluate_model(model_name, self.models[model_name], loo, self.X[:, feature_list], self.Y, True)
+        class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y, kappa = self.train_evaluate_model(model_name, self.models[model_name], loo, self.X[:, feature_list], self.Y, False)
         self.feature_names = list(self.feature_names[i] for i in feature_list)
         self.used_feature_indx = feature_list
-        return accuracies, pred_y
+        return accuracies, pred_y, prob_y, class0_acc, class1_acc, class2_acc, kappa
 
     def shap(self, model_name: str, data_path):
         shap_all = []
@@ -181,29 +181,39 @@ class ClassificationProcessor():
         return shap_class
 
     def return_correct_index(self, array):
-        list_index = [i for i in range(len(array)) and array[i] ==1]
+        index_tuple = np.where(array[:self.data_len_original] == 1)
+        list_index = [item for t in index_tuple for item in t]
         return list_index
+
+    def shap_feature(self, shap_all_class, X_selected_feature, sub_index_list, class_index):
+        for j in range(len(self.feature_names)):
+            feature = X_selected_feature[sub_index_list][:,j]
+            shap_feature = shap_all_class[class_index][sub_index_list][:,j]
+            # corr(feature, shap_feature)
+            plot.scatter_plot_shap(feature, shap_feature, class_index, self.feature_names[j])
 
     # visualize
     def shap_visualize(self, shap_all, expected_all, final_accuracies, final_pred_y, only_show_correct: bool):
         # each class shap
-        shap_all_class = []
         if only_show_correct:
             sub_index_list = self.return_correct_index(final_accuracies)
         else:
-                sub_index_list = range(self.data_len_original)
+                sub_index_list = list(range(self.data_len_original))
+        print(len(sub_index_list))
+        
+        shap_all_class = []
+        X_selected_feature = self.X[:, self.used_feature_indx]
         for class_index in range(3):
             shap_class = self.read_shap(shap_all, class_index)
-            X_selected_feature = self.X[:, self.used_feature_indx]
             shap.summary_plot(shap_class[sub_index_list], X_selected_feature[sub_index_list], feature_names=self.feature_names)
-            shap_all_class.append(shap_class[sub_index_list])
-            for j in range(len(self.feature_names)):
-                feature = X_selected_feature[sub_index_list][j]
-                shap_feature = shap_class[sub_index_list][j]
-                plot.scatter_plot_shap(feature, shap_feature, class_index, self.feature_names[j])
-                
+            shap_all_class.append(shap_class)
+        
         # shap summary
         shap.summary_plot(shap_all_class, X_selected_feature[sub_index_list], plot_type="bar", feature_names=self.feature_names, color=plot.cmap, class_inds=[0,1,2])
+        # each feature shap
+        for i in range(3):
+            self.shap_feature(shap_all_class, X_selected_feature, sub_index_list, i)
+                
+        
     
-
     

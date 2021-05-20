@@ -8,13 +8,13 @@ import pandas as pd
 class FeatureProcessor:
     @staticmethod
     def get_feature_data(no_missing_data: DataFrame) -> DataFrame:
-        col_add_id = rdp.feature_col_names.copy()
+        col_add_id = rdp.feature_col_names.copy() + rdp.demographic_columns
         col_add_id.insert(0, 'ID')
         return no_missing_data[col_add_id]
 
     def __init__(self, no_missing_data: DataFrame):
         self.data  = self.get_feature_data(no_missing_data)
-        self.feature_col_names = rdp.feature_col_names.copy()
+        self.feature_col_names = rdp.feature_col_names.copy() + rdp.demographic_columns
         self.feature_cate_names: list[str] = []
 
     # Feature correlation

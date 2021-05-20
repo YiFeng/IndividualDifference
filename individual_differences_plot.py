@@ -42,7 +42,7 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
         plt.show()
     # plot clusters in one figure
     fig, ax = plt.subplots(figsize=(9,10))
-    for i in range(len(df_cluster_type_list)):
+    for i in [1, 2, 0]:
         t_i = df_cluster_type_list[i]
         df_mean = t_i.mean()
         df_se = t_i.sem()
@@ -51,7 +51,7 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
         y = t['mean']
         yerr = t['se']
         ci = 1.96 * np.std(y)/np.mean(y)
-        label = 'cluster_' + str(i)
+        label = ['Low performers','High performers','Intermediate performers'][i]
         ax.errorbar(x, y, yerr=yerr, color = colors[i],
                     elinewidth = 4, capsize = 4, label=label, linewidth=8)
         # ax.fill_between(x, (y-ci), (y+ci), color='b', alpha=.1)
@@ -61,7 +61,7 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
         ax.set_xlim(1,10)
         # ax.set_ylim(1,8)
     ax.tick_params(labelsize=22)
-    ax.legend(fontsize=20)
+    ax.legend(fontsize=18)
     fig.show()
 
 # plot scatter plot for clustering
@@ -149,8 +149,8 @@ def plot_feature_selection_curve(feature_selection_result: dict):
     ax.legend(fontsize=20, loc=2)
 
 def scatter_plot_shap(x, y, class_index, x_name):
-    fig, ax = plt.subplots(figsize=(9,10))
-    label = 'cluster_' + str(class_index)
+    fig, ax = plt.subplots(figsize=(6,6))
+    label = 'Class_' + str(class_index)
     ax.scatter(x,y,c=colors[class_index], label=label)
     ax.set_xlabel(x_name, fontsize=20)
     ax.set_ylabel('Shap value', fontsize=20)

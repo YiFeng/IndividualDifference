@@ -30,7 +30,7 @@ class ClassifyPreprocessor:
     def __init__(self, cluster_result: DataFrame, feature_preprocessed: DataFrame):
         self.data: DataFrame = self.combine_cluster_feature(cluster_result, feature_preprocessed)
         self.feature_numerical_names = rdp.feature_col_names.copy()
-        self.feature_names = rdp.feature_col_names.copy()
+        self.feature_names = rdp.feature_col_names.copy() 
         self.data_length = None
     
     def transform_df_toarray(self, col_names):
@@ -70,13 +70,15 @@ class ClassifyPreprocessor:
         for key, value in fs_result.items() :
             print(key, value)
         print('The top {} features are: {}'.format(k, list(fs_result.keys())[:k]))
-        self.feature_names = list(fs_result.keys())[:k]
+        self.feature_names = list(fs_result.keys())[:k] 
+        self.feature_names = self.feature_names + rdp.demographic_columns
     
     def use_categorical_features(self):
         for i, feature in enumerate(self.feature_names):
             if feature == 'z_SES' or feature == 'VGQ_pastyear':
                 self.feature_names[i] = feature + '_category'
         print('Use these features: {}'.format(self.feature_names))
+
     
     def resample_standardize(self, sample_weight: dict[int,int]):
         x, y = self.transform_df_toarray(self.feature_names)

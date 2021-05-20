@@ -10,7 +10,7 @@ feature_col_names: list[str] = [
     'Person_emot','Person_extraver', 'Person_opennes', 'Person_agreeable', 'Person_conscien',\
     'VGQ_pastyear','z_SES']
 
-demographic_columns: list[str] = ['Study','Gender','Ethnicity','Hispanic','Algorithm']
+demographic_columns: list[str] = ['Gender']
 
 def read_raw_data(filename: str) -> DataFrame:
     return pd.read_csv(filename, na_values=['', ' '])
