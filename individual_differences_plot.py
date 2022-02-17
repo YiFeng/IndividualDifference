@@ -8,7 +8,8 @@ import learning_curve as lc
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
         
 plot_folder_loc = '/datasets/googledrive/Yi_UCI_research/GSR other works/2020 Summer_predict individual training/plot'
-colors = ['#4285F4','#DB4437','#F4B400','#0F9D58','m', 'y', 'k', 'w']
+colors = ['#ef8a62','#2c7bb6','#d7191c','#0F9D58','m', 'y', 'k', 'w']
+# https://loading.io/color/feature/
 cmap = ListedColormap(colors)
 
 # plots about intervention data clustering
@@ -42,7 +43,7 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
         plt.show()
     # plot clusters in one figure
     fig, ax = plt.subplots(figsize=(9,10))
-    for i in [1, 2, 0]:
+    for i in range(len(df_cluster_type_list)):
         t_i = df_cluster_type_list[i]
         df_mean = t_i.mean()
         df_se = t_i.sem()
@@ -51,10 +52,10 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
         y = t['mean']
         yerr = t['se']
         ci = 1.96 * np.std(y)/np.mean(y)
-        label = ['Low performers','High performers','Intermediate performers'][i]
-        ax.errorbar(x, y, yerr=yerr, color = colors[i],
-                    elinewidth = 4, capsize = 4, label=label, linewidth=8)
-        # ax.fill_between(x, (y-ci), (y+ci), color='b', alpha=.1)
+        label = len(t_i)
+        ax.errorbar(x, y, yerr=yerr, color = colors[i], ecolor = '#353535',
+                    elinewidth = 3, capsize = 3, label=label, linewidth=8)
+        # ax.fill_between(x, (y-ci), (y+ci), color='#c6dbef', alpha=.1)
         ax.set_xlabel('Training Session', fontsize=24)
         ax.set_ylabel('N-back level', fontsize=24)
         # ax.set_title('cluster_using max, slope and sd', fontsize=28)
@@ -74,7 +75,7 @@ def plot_scatter_cluster(data: DataFrame, plot_col: list[str]):
         ax.scatter(x,y,c=colors[i], label=label)
         ax.set_xlabel(plot_col[0], fontsize=20)
         ax.set_ylabel(plot_col[1], fontsize=20)
-        ax.legend(fontsize=20)
+        # ax.legend(fontsize=20)
         # ax.set_title(cluster_result, fontsize=24)
         fig.show()
 
@@ -92,6 +93,7 @@ def plot_distribution(data: DataFrame, plot_col: list[str]):
         fig, ax = plt.subplots()
         ax.hist(data[feature])
         ax.set_title(feature)
+
 
 # category features & label
 def cate_bar_plot(data: DataFrame, plot_col: list[str]):
@@ -112,8 +114,8 @@ def plot_confusion_matrix(classifier_name, cm, classes, normalize=True):
     plt.title(title, fontsize=20)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
-    plt.xticks(tick_marks, classes, rotation=45, fontsize=15)
-    plt.yticks(tick_marks, classes, fontsize=15)
+    plt.xticks(tick_marks, classes, fontsize=15)
+    plt.yticks(tick_marks, classes, rotation=90, fontsize=15)
     thresh = cm.max() / 2.
     for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
       plt.text(j, i, cm[i, j],
@@ -150,10 +152,13 @@ def plot_feature_selection_curve(feature_selection_result: dict):
 
 def scatter_plot_shap(x, y, class_index, x_name):
     fig, ax = plt.subplots(figsize=(6,6))
-    label = 'Class_' + str(class_index)
+    label_list = ['Low performers','High performers','Intermediate performers']
+    label = label_list[class_index]
     ax.scatter(x,y,c=colors[class_index], label=label)
     ax.set_xlabel(x_name, fontsize=20)
     ax.set_ylabel('Shap value', fontsize=20)
     ax.legend(fontsize=20)
     # ax.set_title(cluster_result, fontsize=24)
+    ax.set_xlim(-4.5,4)
+    ax.set_ylim(-0.25,0.25)
     fig.show()

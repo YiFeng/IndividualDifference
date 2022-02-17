@@ -7,27 +7,32 @@ import pandas as pd
 
 class FeatureProcessor:
     @staticmethod
-    def get_feature_data(no_missing_data: DataFrame) -> DataFrame:
-        col_add_id = rdp.feature_col_names.copy() + rdp.demographic_columns
-        col_add_id.insert(0, 'ID')
+    def get_feature_data(no_missing_data: DataFrame, add_demographic: bool) -> DataFrame:
+        if add_demographic:
+            col_add_id = rdp.feature_col_names.copy() + rdp.demographic_columns
+        col_add_id = rdp.feature_col_names.copy()
+        col_add_id.insert(0, 'Unique')
         return no_missing_data[col_add_id]
 
-    def __init__(self, no_missing_data: DataFrame):
-        self.data  = self.get_feature_data(no_missing_data)
-        self.feature_col_names = rdp.feature_col_names.copy() + rdp.demographic_columns
-        self.feature_cate_names: list[str] = []
+    def __init__(self, no_missing_data: DataFrame, add_demographic: bool):
+        self.data  = self.get_feature_data(no_missing_data, add_demographic)
+        if add_demographic:
+            self.feature_col_names = rdp.feature_col_names.copy() + rdp.demographic_columns
+        self.feature_col_names = rdp.feature_col_names.copy()
+        self.feature_cate_names = rdp.feature_col_categ_names.copy()
+        self.feature_col_conti_names = rdp.feature_col_conti_names.copy()
 
     # Feature correlation
     def corr_features(self):
-        corr = self.data[self.feature_col_names].corr()
-        for i in range(len(self.feature_col_names)):
-            for j in range(len(self.feature_col_names)):
+        corr = self.data[self.feature_col_conti_names].corr()
+        for i in range(len(self.feature_col_conti_names)):
+            for j in range(len(self.feature_col_conti_names)):
                 if corr.iloc[i,j] > 0.5 and i != j:
-                    print('These two features correlated above 0.5:{}, {}'.format(self.feature_col_names[i], self.feature_col_names[j]))
+                    print('These two features correlated above 0.5:{}, {}'.format(self.feature_col_conti_names[i], self.feature_col_conti_names[j]))
 
     # Feature distribution
     def distri_features(self):
-        plot.plot_distribution(self.data, self.feature_col_names)
+        plot.plot_distribution(self.data, self.feature_col_conti_names)
 
     # Discretize continuous features
     def discretize_features(self):
@@ -38,6 +43,10 @@ class FeatureProcessor:
         self.data['VGQ_pastyear_category'] = pd.cut(x = self.data['VGQ_pastyear'], bins = [5,median,32], labels = ['less_play', 'more_play'])
         self.feature_cate_names = ['SES_category', 'VGQ_category']
 
+    # Feature missing data
+    def features_impute_missing(self):
+        print('Count total NaN at each column in a DataFrame : {}'.format(self.data[self.feature_col_names].isnull().sum()))
+        
 # Feature F test (for numrical features)
 # Feature chi test (for categorical features)
 

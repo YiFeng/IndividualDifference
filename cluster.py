@@ -4,6 +4,8 @@ from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_samples, silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import AgglomerativeClustering
+import scipy.cluster.hierarchy as sch
 import numpy as np
 
 class ClusterModel:
@@ -23,7 +25,7 @@ class ClusterModel:
         print('The silhouette score of {} is: {:.3f}'.format(self.cluster_method, silhouette_avg))
         print('Sample of each cluster: {}'.format(num_group_count))
         return input_x
-
+    
 class Kmeans(ClusterModel):
     def __init__(self, n_clusters: int, clustering_col_names: list[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
@@ -44,3 +46,14 @@ class EM(ClusterModel):
         for i in range(self.n_clusters):
             data['cluster_'+str(i)] = prob[:,i]
         print('The mean of each mixture component: {}'.format(self.cluster_method.fit(input_x).means_))
+        return input_x
+
+class hierarchical(ClusterModel):
+    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+        ClusterModel.__init__(self, n_clusters, clustering_col_names)
+        self.cluster_method = AgglomerativeClustering(n_clusters=self.n_clusters, affinity = 'euclidean', linkage = 'ward')
+
+    def clustering(self, data: DataFrame):
+        input_x = self.clustering_process(data)
+        dendro = sch.dendrogram(sch.linkage(input_x, method = 'ward', metric = 'euclidean'))
+        

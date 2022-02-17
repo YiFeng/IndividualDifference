@@ -13,11 +13,11 @@ class InterventionProcessor:
     @staticmethod
     def get_intervention_data(no_missing_data: DataFrame, intervention_col_names: list[str]) -> DataFrame:
         col_add_id = intervention_col_names.copy()
-        col_add_id.insert(0, 'ID')
+        col_add_id.insert(0, 'Unique')
         return no_missing_data[col_add_id]
 
     def __init__(self, no_missing_data):
-        self.intervention_col_names = ['WmeanN_' + str(i) for i in range(1,11)]
+        self.intervention_col_names = ['mean_' + str(i) for i in range(1,11)]
         self.data: DataFrame = self.get_intervention_data(no_missing_data, self.intervention_col_names)
         self.regressors: list[Regressor] = []
         self.generated_col_names: set[str] = set()
@@ -31,7 +31,12 @@ class InterventionProcessor:
         self.generated_col_names.add('max')
         self.data['max'] = self.get_only_intervention_data().max(axis=1, skipna=True, numeric_only=True)
         print('The mean of max is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
-    
+
+    def get_mean(self):
+        self.generated_col_names.add('max')
+        self.data['mean'] = self.get_only_intervention_data().mean(axis=1, skipna=True, numeric_only=True)
+        print('The mean of max is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
+
     def get_std(self):
         self.generated_col_names.add('std')
         self.data['std'] = self.get_only_intervention_data().std(axis=1, skipna=True, numeric_only=True)
@@ -44,6 +49,7 @@ class InterventionProcessor:
     def basic_analyze(self):
         self.get_max()            
         self.get_std()
+        self.get_mean()
     
     def register_regressor(self, reg: Regressor):
         self.regressors.append(reg)
@@ -53,7 +59,8 @@ class InterventionProcessor:
             result = r.fit(self.data)
             self.generated_col_names.update(r.parameter_names)
             print('The mean r2 for {} is: {:.3f}'.format(type(r), np.nanmean(result)))
-            print('The num of aubjects can not fit by pwlf: {}'.format(self.data.isna().sum()))
+            print('The std r2 for {} is: {:.3f}'.format(type(r), np.nanstd(result)))
+            print('The num of objects can not fit by pwlf: {}'.format(self.data.isna().sum()))
             self.data = self.data.dropna(subset=['r2'])
             print('The sample size that can fit with pwlf: {}'.format(len(self.data)))
     
@@ -106,7 +113,8 @@ class InterventionProcessor:
             if col not in self.generated_col_names:
                 print('This column has not be generated:{}'.format(col))
                 continue
-        self.clustering_model.clustering(self.data)
+        xx = self.clustering_model.clustering(self.data)
+        return xx
         
     def get_clustered_data(self) -> DataFrame:
         return self.data

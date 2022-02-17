@@ -78,7 +78,7 @@ class ClassificationProcessor():
         self.data_len_original = original_length
         self.models = dict_models
         self.feature_names = feature_names
-        self.used_feature_indx = []
+        self.used_feature_indx =  [0, 1, 2,3,4,5,6,7,8]
         
     def train_evaluate_model(self, classifier_name: str, classifier, cross_validation, complete_x, complete_y, print_show_plot: bool) -> int:
         accuracies = cross_val_score(classifier, complete_x, complete_y, scoring='f1_weighted', cv=cross_validation, n_jobs=-1)
@@ -89,7 +89,7 @@ class ClassificationProcessor():
         mean_acc = np.mean(accuracies[:self.data_len_original]) 
         macro_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], prob_y[:self.data_len_original], multi_class="ovr",average="macro")
         weighted_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], prob_y[:self.data_len_original], multi_class="ovr",average="weighted")
-        cfm = confusion_matrix(complete_y[:self.data_len_original], pred_y[:self.data_len_original], labels=[0,1,2])
+        cfm = confusion_matrix(complete_y[:self.data_len_original], pred_y[:self.data_len_original], labels=[1,0,2])
         kappa = cohen_kappa_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
 
         # plot confusion matrix
@@ -100,7 +100,7 @@ class ClassificationProcessor():
             print('recall: {:.3f}'.format(recall_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original], average='macro')))
             print("One-vs-Rest ROC AUC scores:\n{:.6f} (macro),\n{:.6f} ""(weighted by prevalence)".format(macro_roc_auc_ovr, weighted_roc_auc_ovr))
             print('The cogen kappa score is : {}'.format(kappa))
-            plot.plot_confusion_matrix(classifier_name, cfm, classes=[0, 1, 2])
+            plot.plot_confusion_matrix(classifier_name, cfm, classes=['High', 'Intermediate', 'Low'])
             plot.plot_error_confusion(cfm)
         
             # plot learning curve
@@ -132,7 +132,7 @@ class ClassificationProcessor():
         feature_selection_result = {}
         for i in range(1,15):
             X = self.X[:, 0:i]
-            class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, loo, X, self.Y, False)
+            class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, skf, X, self.Y, False)
             feature_selection_result[i] = [class0_acc, class1_acc, class2_acc]
         plot.plot_feature_selection_curve(feature_selection_result)
     
@@ -151,12 +151,12 @@ class ClassificationProcessor():
         self.used_feature_indx = best_idx
     
     def final_model(self, model_name: str, feature_list: list[int]):
-        class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y, kappa = self.train_evaluate_model(model_name, self.models[model_name], loo, self.X[:, feature_list], self.Y, False)
+        class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y, kappa = self.train_evaluate_model(model_name, self.models[model_name], loo, self.X[:, feature_list], self.Y, True)
         self.feature_names = list(self.feature_names[i] for i in feature_list)
         self.used_feature_indx = feature_list
         return accuracies, pred_y, prob_y, class0_acc, class1_acc, class2_acc, kappa
 
-    def shap(self, model_name: str, data_path):
+    def shap_kernel(self, model_name: str, data_path):
         shap_all = []
         expected_all = []
         kfold_loo = KFold(n_splits=380, shuffle=False)
@@ -173,6 +173,23 @@ class ClassificationProcessor():
         # save shap
         save_data(data_path, shap_all, 'shap_values.data')
         save_data(data_path, expected_all,'shap_expected.data')
+
+    def shap_tree(self, model_name: str, data_path):
+        X = self.X[:, self.used_feature_indx]
+        model = self.models[model_name]
+        model.fit(X, self.Y)
+        #shap
+        explainer=shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+        print(explainer.expected_value)
+        shap.summary_plot(shap_values, X[:self.data_len_original], feature_names=self.feature_names)
+        shap.summary_plot(shap_values[0][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.summary_plot(shap_values[1][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.summary_plot(shap_values[2][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.dependence_plot('Video game background', shap_values[0][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.dependence_plot('Video game background', shap_values[1][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.dependence_plot('Video game background', shap_values[2][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
+        shap.dependence_plot('Working memory', shap_values[0][:self.data_len_original], X[:self.data_len_original], feature_names=self.feature_names)
 
     def read_shap(self, shap_all, class_index):
         shap_array = np.array(shap_all)
@@ -209,7 +226,7 @@ class ClassificationProcessor():
             shap_all_class.append(shap_class)
         
         # shap summary
-        shap.summary_plot(shap_all_class, X_selected_feature[sub_index_list], plot_type="bar", feature_names=self.feature_names, color=plot.cmap, class_inds=[0,1,2])
+        shap.summary_plot(shap_all_class, X_selected_feature[sub_index_list], plot_type="bar", feature_names=self.feature_names, color=plot.cmap, class_inds=[0,1,2], class_names=['Low','High','Intermediate'])
         # each feature shap
         for i in range(3):
             self.shap_feature(shap_all_class, X_selected_feature, sub_index_list, i)
