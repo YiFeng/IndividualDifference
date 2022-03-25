@@ -81,4 +81,3 @@ class density_based(ClusterModel):
 
     def clustering(self, data: DataFrame):
         input_x = self.clustering_process(data)
-    
