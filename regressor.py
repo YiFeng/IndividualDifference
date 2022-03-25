@@ -4,6 +4,7 @@ from scipy.optimize import curve_fit
 from scipy import log
 import pwlf
 import individual_differences_plot as plot
+from sklearn.metrics import mean_squared_error
 
 # Base Regressor. Do not use. Use Derived Regressors.
 class Regressor:
@@ -36,7 +37,8 @@ class Regressor:
         result['parameters'] = params_opt
 
         # r-squared
-        residual = y - self.regression_func(x, *params_opt)            
+        y_pred = self.regression_func(x, *params_opt)
+        residual = y - y_pred            
         y_mean = np.sum(y)/len(y)         
         ssreg = np.sum(residual**2)   
         sstot = np.sum((y - y_mean)**2)    
@@ -45,6 +47,7 @@ class Regressor:
         return result
     
     def fit(self, data: DataFrame):
+        bic_scores = []
         fit_scores = []
         for pn in self.parameter_names:
             data[pn] = np.nan
@@ -60,6 +63,7 @@ class Regressor:
         data['r2'] = fit_scores
         return fit_scores
 
+#https://courses.lumenlearning.com/ivytech-collegealgebra/chapter/build-a-logarithmic-model-from-data/
 class LogRegressor(Regressor):
     def __init__(self, clustering_parameters: list[str] = None):
         Regressor.__init__(self)
@@ -79,7 +83,7 @@ class LinearRegressor(Regressor):
 class PiecewiselinRegressor(Regressor):
     def __init__(self, clustering_parameters: list[str] = None):
         Regressor.__init__(self)
-        self.parameter_names = ['knot', 'slope1', 'slope2']
+        self.parameter_names = ['knot', 'slope1', 'slope2','turning_value']
         self.clustering_parameters = []
         self.set_clustering_parameters(clustering_parameters)
     
@@ -107,11 +111,15 @@ class PiecewiselinRegressor(Regressor):
             result['r2'] = np.nan
             return result
         opt_knot = self.find_opt_knot(x, y)
+        turning_value = y[opt_knot[0]-1]
         pwlf_each_row = pwlf.PiecewiseLinFit(x, y)
         pwlf_each_row.fit_with_breaks_opt([opt_knot])
         slopes = pwlf_each_row.calc_slopes()
+        y_pred = pwlf_each_row.predict(x)
+
+
         # plot.piecewise_lin_plot(x,y,pwlf_each_row, index)
         result['parameters'] = np.insert(slopes, 0, opt_knot)
-        # result['parameters'] = np.append(result['parameters'])
+        result['parameters'] = np.append(result['parameters'], turning_value)
         result['r2'] = pwlf_each_row.r_squared()
         return result

@@ -21,41 +21,29 @@ import os.path as path
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
 
+
 class ClassifyPreprocessor:
     @staticmethod
-    def combine_cluster_feature(cluster_result, feature_preprocessed) -> DataFrame:
+    def combine_cluster_feature(cluster_result, feature_preprocessed, label_name) -> DataFrame:
         feature_preprocessed = feature_preprocessed.set_index('Unique')
         id_list = cluster_result['Unique'].tolist()
         cluster_result = cluster_result.set_index('Unique')
-        data = pd.concat([feature_preprocessed.loc[id_list,:], cluster_result['label']], axis=1)
+        data = pd.concat([feature_preprocessed.loc[id_list,:], cluster_result[label_name]], axis=1)
         return data
 
 
-    def __init__(self, cluster_result: DataFrame, feature_preprocessed: DataFrame):
-        self.data: DataFrame = self.combine_cluster_feature(cluster_result, feature_preprocessed)
+    def __init__(self, cluster_result: DataFrame, feature_preprocessed: DataFrame, label_name: str):
+        self.data: DataFrame = self.combine_cluster_feature(cluster_result, feature_preprocessed, label_name)
         self.feature_numerical_names = rdp.feature_col_conti_names.copy()
         self.categorical_columns = rdp.feature_col_categ_names.copy()
         self.feature_names = rdp.feature_col_names.copy() 
         self.data_length = None
+        self.label_name = label_name
     
     def transform_df_toarray(self, col_names):
         x = pd.get_dummies(self.data[col_names]).to_numpy()
-        y = self.data['label'].to_numpy()
-        return x, y
-
-    # Feature missing data
-    def features_impute_missing(self):
-        print('Count total NaN at each column in a DataFrame : {}'.format(self.data[self.feature_names].isnull().sum()))
-        for var in self.feature_numerical_names:
-            self.data[var].fillna(self.data[var].mean(), inplace = True)
-        for var in self.categorical_columns:
-            self.data[var].fillna(self.data[var].mode().values[0], inplace = True)
-        print('Count total NaN at each column in a DataFrame after imputation : {}'.format(self.data[self.feature_names].isnull().sum()))
-
-    def delete_missing(self):
-        print('Count total NaN at each column in a DataFrame : {}'.format(self.data[self.feature_names].isnull().sum()))
-        self.data.dropna(axis='index', how='any', inplace=True)
-        print('Count total NaN at each column in a DataFrame after delete : {}'.format(self.data[self.feature_names].isnull().sum()))
+        y = self.data[self.label_name].to_numpy()
+        return x, y    
 
 
     def delete_outlier(self):
@@ -68,7 +56,7 @@ class ClassifyPreprocessor:
                 outlier_index.append(i)
         self.data.drop(index = self.data.iloc[outlier_index].index, inplace=True)
         print('The samplesize after delete outliers: {}'.format(len(self.data)))
-        print('The sample weight after delete outliers: {}'.format(Counter(self.data['label'])))
+        print('The sample weight after delete outliers: {}'.format(Counter(self.data[self.label_name])))
 
     def oneway_anova(self, data: DataFrame, factor: str, dependent_var: str):
         model = ols(dependent_var + ' ~ C('+ factor + ')', data=data).fit()
@@ -104,12 +92,6 @@ class ClassifyPreprocessor:
         self.feature_names = list(fs_result.keys())[:k] 
         # self.feature_names = self.feature_names + rdp.demographic_columns
     
-    def use_categorical_features(self):
-        for i, feature in enumerate(self.feature_names):
-            if feature == 'z_SES' or feature == 'VGQ_pastyear':
-                self.feature_names[i] = feature + '_category'
-        print('Use these features: {}'.format(self.feature_names))
-
     
     def resample_standardize(self, sample_weight: dict[int,int], oversample:bool):
         x, y = self.transform_df_toarray(self.feature_names)
@@ -153,3 +135,5 @@ class ClassifyPreprocessor:
         with open(path.join(data_path, "feature_names.list"), mode='wb') as f:
             pickle.dump(feature_names, f)
             f.close()
+    
+    

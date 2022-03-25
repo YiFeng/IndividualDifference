@@ -30,17 +30,17 @@ class InterventionProcessor:
     def get_max(self):
         self.generated_col_names.add('max')
         self.data['max'] = self.get_only_intervention_data().max(axis=1, skipna=True, numeric_only=True)
-        print('The mean of max is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
+        print('The average maximun span across sessions is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
 
     def get_mean(self):
-        self.generated_col_names.add('max')
+        self.generated_col_names.add('mean')
         self.data['mean'] = self.get_only_intervention_data().mean(axis=1, skipna=True, numeric_only=True)
-        print('The mean of max is {:.3f} with sd {:.3f}'.format(self.data['max'].mean(), self.data['max'].std())) 
+        print('The average span across sessions is {:.3f} with sd {:.3f}'.format(self.data['mean'].mean(), self.data['mean'].std())) 
 
     def get_std(self):
         self.generated_col_names.add('std')
         self.data['std'] = self.get_only_intervention_data().std(axis=1, skipna=True, numeric_only=True)
-        print('The mean of std is {:.3f} with sd {:.3f}'.format(self.data['std'].mean(), self.data['std'].std()))
+        print('The average standard deviation across sessions is {:.3f} with sd {:.3f}'.format(self.data['std'].mean(), self.data['std'].std()))
         
     def get_max_session(self):
         self.generated_col_names.add('max_session') 
@@ -50,19 +50,7 @@ class InterventionProcessor:
         self.get_max()            
         self.get_std()
         self.get_mean()
-    
-    def register_regressor(self, reg: Regressor):
-        self.regressors.append(reg)
-    
-    def fit(self):
-        for r in self.regressors:
-            result = r.fit(self.data)
-            self.generated_col_names.update(r.parameter_names)
-            print('The mean r2 for {} is: {:.3f}'.format(type(r), np.nanmean(result)))
-            print('The std r2 for {} is: {:.3f}'.format(type(r), np.nanstd(result)))
-            print('The num of objects can not fit by pwlf: {}'.format(self.data.isna().sum()))
-            self.data = self.data.dropna(subset=['r2'])
-            print('The sample size that can fit with pwlf: {}'.format(len(self.data)))
+
     
     def mark_outlier_stewd(self, option: list[str]):
         self.data['outlier'] = False
@@ -104,6 +92,20 @@ class InterventionProcessor:
         self.data = self.data[self.data['outlier']==0]
         print('The sample size after delete outlier: {}'.format(len(self.data)))
 
+    ####Regressor    
+    def register_regressor(self, reg: Regressor):
+        self.regressors.append(reg)
+    
+    def fit(self):
+        for r in self.regressors:
+            rsquare = r.fit(self.data)
+            self.generated_col_names.update(r.parameter_names)
+            print('The average r2 for {} is: {:.3f}'.format(type(r), np.nanmean(rsquare)))
+            print('The num of objects can not fit by pwlf: {}'.format(self.data.isna().sum()))
+            self.data = self.data.dropna(subset=['r2'])
+            print('The sample size that can fit with pwlf: {}'.format(len(self.data)))
+    
+    ####Cluster 
     def register_cluster_model(self, cluster: ClusterModel):
         self.clustering_model = cluster
 

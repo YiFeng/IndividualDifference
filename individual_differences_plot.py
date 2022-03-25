@@ -66,11 +66,11 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
     fig.show()
 
 # plot scatter plot for clustering
-def plot_scatter_cluster(data: DataFrame, plot_col: list[str]):
+def plot_scatter_cluster(data: DataFrame, plot_col: list[str], label_name: str):
     fig, ax = plt.subplots(figsize=(9,10))
-    for i in range(len(data['label'].unique())):
-        x = data[plot_col[0]][data['label']==i]
-        y = data[plot_col[1]][data['label']==i]
+    for i in range(len(data[label_name].unique())):
+        x = data[plot_col[0]][data[label_name]==i]
+        y = data[plot_col[1]][data[label_name]==i]
         label = 'cluster_' + str(i)
         ax.scatter(x,y,c=colors[i], label=label)
         ax.set_xlabel(plot_col[0], fontsize=20)
@@ -80,10 +80,10 @@ def plot_scatter_cluster(data: DataFrame, plot_col: list[str]):
         fig.show()
 
 # bar plot   
-def bar_plot_cluster(data: DataFrame, clustering_col_names: list[str]):
+def bar_plot_cluster(data: DataFrame, clustering_col_names: list[str], label_name: str):
     for i in clustering_col_names:
         fig, ax = plt.subplots(figsize=(6,5))
-        ax = sns.barplot(x="label", y=i, data=data, palette=colors)
+        ax = sns.barplot(x=label_name, y=i, data=data, palette=colors)
         fig.show()
 
 # plot features

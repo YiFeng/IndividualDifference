@@ -5,6 +5,8 @@ import individual_differences_plot as plot
 import numpy as np
 import classification_preprocessor as cp
 import pandas as pd
+from imblearn.combine import SMOTETomek
+from collections import Counter
 
 # cross validation setting
 from sklearn.model_selection import LeaveOneOut
@@ -29,17 +31,28 @@ from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.ensemble import StackingClassifier
 from ipywidgets import IntProgress
+import xgboost
+from xgboost import XGBClassifier
 
 import traceback
 
 names = ['Logitic Reg', 'Nearest Neighbors', 
-          'Random Forest', 'MLP']
+          'Random Forest', 'MLP', "Linear SVM", "RBF SVM", "Gaussian Process", "AdaBoost",
+         "Naive Bayes", "QDA", 'GDBT']
 
 classifiers = [
     LogisticRegression(random_state=0, solver='liblinear'),
     KNeighborsClassifier(n_neighbors=6, weights='distance'),
-    RandomForestClassifier(max_depth=5, class_weight='balanced_subsample', random_state=0),
-    MLPClassifier(hidden_layer_sizes=(13,),solver='lbfgs')]
+    RandomForestClassifier(max_depth=5, class_weight='balanced', random_state=0),
+    MLPClassifier(hidden_layer_sizes=(5,),solver='lbfgs'),
+    SVC(kernel="linear", C=0.025),
+    SVC(gamma=2, C=1),
+    GaussianProcessClassifier(1.0 * RBF(1.0)),
+    AdaBoostClassifier(),
+    GaussianNB(),
+    QuadraticDiscriminantAnalysis(),
+    GradientBoostingClassifier(loss='deviance', n_estimators=100, max_depth=5,learning_rate=0.1, random_state=42)
+    ]
 
 dict_models = dict(zip(names, classifiers))
 
@@ -66,6 +79,14 @@ def read_inputs(data_path, file_names):
             f.close()
     return output
 
+def over_under_sample(X_train, Y_train):
+    smote_tomek = SMOTETomek(random_state=42)
+    print('The sample weight before resample: {}'.format(Counter(Y_train)))
+    X_resampled, y_resampled = smote_tomek.fit_resample(X_train, Y_train)
+    print('The sample weight after resample: {}'.format(Counter(y_resampled)))
+    return X_resampled, y_resampled
+
+
 def save_data(data_path, data, file_name):
     with open(path.join(data_path, file_name), mode='wb') as f:
         pickle.dump(data, f)
@@ -83,24 +104,25 @@ class ClassificationProcessor():
     def train_evaluate_model(self, classifier_name: str, classifier, cross_validation, complete_x, complete_y, print_show_plot: bool) -> int:
         accuracies = cross_val_score(classifier, complete_x, complete_y, scoring='f1_weighted', cv=cross_validation, n_jobs=-1)
         pred_y = cross_val_predict(classifier, complete_x, complete_y, cv=cross_validation, n_jobs=-1)
-        prob_y = cross_val_predict(classifier, complete_x, complete_y, cv=cross_validation, n_jobs=-1, method='predict_proba')
+        # prob_y = cross_val_predict(classifier, complete_x, complete_y, cv=cross_validation, n_jobs=-1, method='predict_proba')
         
         # model performance
-        mean_acc = np.mean(accuracies[:self.data_len_original]) 
-        macro_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], prob_y[:self.data_len_original], multi_class="ovr",average="macro")
-        weighted_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], prob_y[:self.data_len_original], multi_class="ovr",average="weighted")
-        cfm = confusion_matrix(complete_y[:self.data_len_original], pred_y[:self.data_len_original], labels=[1,0,2])
-        kappa = cohen_kappa_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
+        # mean_acc = np.mean(accuracies[:self.data_len_original]) 
+        macro_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
+        weighted_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
+        # weighted_roc_auc_ovr = roc_auc_score(complete_y[:self.data_len_original], prob_y[:self.data_len_original], multi_class="ovr",average="weighted")
+        cfm = confusion_matrix(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
+        # kappa = cohen_kappa_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])
 
         # plot confusion matrix
         if print_show_plot:
-            print('{} Accuracy: {:.3f} ({:.3f})'.format(classifier_name, mean_acc, np.std(accuracies[:self.data_len_original])))
-            print('f1 score: {:.3f}'.format(f1_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original], average='macro')))
-            print('precision: {:.3f}'.format(precision_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original], average='macro')))
-            print('recall: {:.3f}'.format(recall_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original], average='macro')))
+            # print('{} Accuracy: {:.3f} ({:.3f})'.format(classifier_name, mean_acc, np.std(accuracies[:self.data_len_original])))
+            print('f1 score: {:.3f}'.format(f1_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
+            print('precision: {:.3f}'.format(precision_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
+            print('recall: {:.3f}'.format(recall_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
             print("One-vs-Rest ROC AUC scores:\n{:.6f} (macro),\n{:.6f} ""(weighted by prevalence)".format(macro_roc_auc_ovr, weighted_roc_auc_ovr))
-            print('The cogen kappa score is : {}'.format(kappa))
-            plot.plot_confusion_matrix(classifier_name, cfm, classes=['High', 'Intermediate', 'Low'])
+            # print('The cogen kappa score is : {}'.format(kappa))
+            plot.plot_confusion_matrix(classifier_name, cfm, classes=[0,1])
             plot.plot_error_confusion(cfm)
         
             # plot learning curve
@@ -230,7 +252,3 @@ class ClassificationProcessor():
         # each feature shap
         for i in range(3):
             self.shap_feature(shap_all_class, X_selected_feature, sub_index_list, i)
-                
-        
-    
-    
