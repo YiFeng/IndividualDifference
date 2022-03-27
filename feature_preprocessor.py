@@ -29,10 +29,10 @@ class FeatureProcessor:
         self.feature_col_conti_names = rdp.feature_col_conti_names.copy()
 
     # Feature missing data
-    def delete_missing_rows(self):
+    def delete_missing_rows(self, crtieria: int):
         print('Original length of data is : {}'.format(len(self.data)))
-        self.data = self.data[self.data[self.feature_col_names].isnull().sum(axis=1) < 6]
-        print('Delete rows have >= 6 missing values in features')
+        self.data = self.data[self.data[self.feature_col_names].isnull().sum(axis=1) < crtieria]
+        print('Delete rows have >= crtieria missing values in features')
         print('The data length now is :{}'.format(len(self.data))) 
 
     # Create dummy variables for categorical vars
@@ -66,7 +66,7 @@ class FeatureProcessor:
         imputer = IterativeImputer(estimator=BayesianRidge(), n_nearest_features=None, imputation_order='ascending')
         self.data[self.feature_col_names] = imputer.fit_transform(self.data[self.feature_col_names])
         # print total missing
-        print('============Finish impute continious variables=============')
+        print('============Finish impute missing values in features=============')
 
         
 

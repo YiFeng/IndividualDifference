@@ -120,3 +120,10 @@ class InterventionProcessor:
         
     def get_clustered_data(self) -> DataFrame:
         return self.data
+
+
+    ###Create labels
+    def create_labels(self, dict_naming: dict, cluster_col: str, delete1cluster: bool, cluster_delete=None or str):
+        if delete1cluster:
+            self.data = self.data[self.data[cluster_col] != cluster_delete]
+        self.data.replace({cluster_col: dict_naming}, inplace=True)

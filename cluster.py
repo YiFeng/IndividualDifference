@@ -35,6 +35,7 @@ class ClusterModel:
         visualizer.show()        # Finalize and render figure
         return input_x
     
+
 class Kmeans(ClusterModel):
     def __init__(self, n_clusters: int, clustering_col_names: list[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
@@ -59,7 +60,7 @@ class EM(ClusterModel):
         print('The mean of each mixture component: {}'.format(self.cluster_method.fit(input_x).means_))
         return input_x
 
-class hierarchical(ClusterModel):
+class Hierarchical(ClusterModel):
     def __init__(self, n_clusters: int, clustering_col_names: list[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
         self.cluster_method = AgglomerativeClustering(n_clusters=self.n_clusters, affinity = 'euclidean', linkage = 'ward')
@@ -69,7 +70,7 @@ class hierarchical(ClusterModel):
         input_x = self.clustering_process(data)
         # dendro = sch.dendrogram(sch.linkage(input_x, method = 'ward', metric = 'euclidean')) 
 
-class density_based(ClusterModel):
+class DensityBased(ClusterModel):
     """
     Class utilizes density-based clustering (DBSCAN)
     Parameter takes in ClusterModel
