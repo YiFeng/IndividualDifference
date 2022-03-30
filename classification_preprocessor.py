@@ -12,6 +12,7 @@ from sklearn.feature_selection import f_classif
 from sklearn.ensemble import IsolationForest
 from collections import Counter
 from imblearn.over_sampling import SMOTE
+from imblearn.combine import SMOTETomek
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler,OneHotEncoder
 from sklearn.model_selection import train_test_split
@@ -77,6 +78,7 @@ class ClassifyPreprocessor:
         print('The shape of training set before resample: {} and {}'.format(X_train.shape, y_train.shape))
         print('The sample weight before resample: {}'.format(Counter(y_train)))
         print('The shape of test set: {} and {}'.format(X_test.shape, y_test.shape))
+        print('The sample weight of test set: {}'.format(Counter(y_test)))
         return X_train, X_test, y_train, y_test
 
     def resample_standardize(self, x_train, y_train, target_sample_weight: dict[str,int], oversample:bool):
@@ -87,9 +89,11 @@ class ClassifyPreprocessor:
             print('The sample weight after resample: {}'.format(Counter(labels_resample)))
         else:
             features_resample, labels_resample = x_train, y_train
-        # Standardize
+        # Standardize numerical features
         scaler = StandardScaler()
-        new_x = scaler.fit_transform(features_resample)
+        numerical_x = scaler.fit_transform(features_resample[:,0:len(self.feature_numerical_names)])
+        category_x = features_resample[:,len(self.feature_numerical_names):]
+        new_x = np.concatenate((numerical_x, category_x), axis=1)
         return new_x, labels_resample, self.data_length, self.feature_names
     
     def save_data(self, X_train, X_test, y_train, y_test, orig_len: int, feature_names, data_path: str):
