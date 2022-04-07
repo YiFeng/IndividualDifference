@@ -2,7 +2,7 @@ from pandas import DataFrame
 from regressor import Regressor
 from cluster import ClusterModel
 import numpy as np
-import re as re
+import re
 from scipy import stats
 import statsmodels
 from statsmodels.stats.stattools import medcouple
