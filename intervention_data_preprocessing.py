@@ -84,7 +84,7 @@ class InterventionProcessor:
             std = self.data[col].std()
             for i in range(len(self.data)):
                 z_score = (self.data[col].iloc[i] - mean)/std
-                if z_score >2 or z_score <-2:
+                if z_score >3 or z_score <-3:
                     self.data['outlier'].iloc[i] = True
         print(self.data[self.data['outlier']])
 

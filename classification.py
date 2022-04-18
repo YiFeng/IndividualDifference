@@ -7,22 +7,19 @@ import numpy as np
 import classification_preprocessor as cp
 import pandas as pd
 
-
-
 # cross validation setting
 from sklearn.model_selection import LeaveOneOut
 from sklearn.model_selection import KFold
 from sklearn.model_selection import StratifiedKFold
 loo = LeaveOneOut()
-kfold = KFold(n_splits=5, shuffle=True, random_state=0)
-skf = StratifiedKFold(n_splits=5, shuffle=True,random_state=0)
-
+kfold = KFold(n_splits=10, shuffle=True, random_state=0)
+skf = StratifiedKFold(n_splits=10, shuffle=True,random_state=0)
 
 # models setting
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
+from sklearn.svm import SVC, LinearSVC
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.tree import DecisionTreeClassifier
@@ -34,6 +31,7 @@ from sklearn.ensemble import StackingClassifier
 from ipywidgets import IntProgress
 import xgboost
 from xgboost import XGBClassifier
+from sklearn.feature_selection import SelectFromModel
 
 import traceback
 
@@ -41,7 +39,7 @@ NAMES = ['Decision Tree','Random Forest', 'MLP', "Linear SVM", "RBF SVM", 'GDBT'
 
 CLASSIFILES = [
     DecisionTreeClassifier(max_depth=10, class_weight='balanced', random_state=0),
-    RandomForestClassifier(n_estimators=50, max_depth=5, class_weight='balanced', random_state=0),
+    RandomForestClassifier(n_estimators=100, max_depth=5, class_weight='balanced', min_samples_leaf=5, max_features=10,random_state=0),
     MLPClassifier(hidden_layer_sizes=(5,),solver='lbfgs', random_state=0),
     SVC(kernel="linear", C=0.025, class_weight='balanced',decision_function_shape='ovo', random_state=0, probability=True),
     SVC(kernel="rbf", C=1, class_weight='balanced',decision_function_shape='ovo', random_state=0, probability=True),
@@ -79,18 +77,20 @@ def save_data(data_path, data, file_name):
         f.close()
 
 class ClassificationProcessor():
-    def __init__(self, X, Y, original_length, feature_names):
+    def __init__(self, X, Y, original_length, feature_names, classes):
         self.X = X
         self.Y = Y
         self.data_len_original = original_length
         self.models = dict_models
         self.feature_names = feature_names
         self.used_feature_indx =  [0,1,2,3,4,5,6,7,8]
+        self.classes = classes
         
-    def train_evaluate_model(self, classifier_name: str, classifier, cross_validation, complete_x, complete_y, print_show_plot: bool) -> int:
+    def train_evaluate_model(self, classifier_name: str, classifier, cross_validation, complete_x, complete_y, print_show_plot: bool, classes) -> int:
         accuracies = cross_val_score(classifier, complete_x, complete_y, scoring='f1_weighted', cv=cross_validation, n_jobs=-1)
         pred_y = cross_val_predict(classifier, complete_x, complete_y, cv=cross_validation, n_jobs=-1)
         prob_y = cross_val_predict(classifier, complete_x, complete_y, cv=cross_validation, n_jobs=-1, method='predict_proba')
+
         
         # model performance (cross validation)
         #1) confusion matrix 2)Akaike information Criterion 3) ROC-AUC score
@@ -101,24 +101,25 @@ class ClassificationProcessor():
 
         # plot confusion matrix
         if print_show_plot:
+            print('The confusion matrix of {} is: {}'.format(classifier_name, cfm))
             print('{} Accuracy: {:.3f} ({:.3f})'.format(classifier_name, mean_acc, np.std(accuracies[:self.data_len_original])))
             # print('f1 score: {:.3f}'.format(f1_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
             # print('precision: {:.3f}'.format(precision_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
             # print('recall: {:.3f}'.format(recall_score(complete_y[:self.data_len_original], pred_y[:self.data_len_original])))
             # print("One-vs-One ROC AUC scores:\n{:.6f} (macro),\n{:.6f} ""(weighted by prevalence)".format(macro_roc_auc_ovo, weighted_roc_auc_ovo))
             # print('The cogen kappa score is : {}'.format(kappa))
-            plot.plot_confusion_matrix(classifier_name, cfm, classes=['short_benefit','long_benefit','much_benefit'])
+            plot.plot_confusion_matrix(classifier_name, cfm, classes=self.classes)
             # plot.plot_error_confusion(cfm)
         
             # plot learning curve
             plot.plot_learning_curve(classifier, classifier_name, complete_x, complete_y, cross_validation)
-        return cfm[0][0]/cfm[0].sum(), cfm[1][1]/cfm[1].sum(), cfm[2][2]/cfm[2].sum(), accuracies, pred_y, prob_y # return acc for class 0,1,2
+        return accuracies, pred_y, prob_y # return acc for class 0,1,2
     
     
     def model_selection(self, feature_num: int):
         for name, clf in self.models.items():
             try:
-              self.train_evaluate_model(name, clf, skf, self.X[:, 0:feature_num], self.Y, True)
+              self.train_evaluate_model(name, clf, skf, self.X[:, 0:feature_num], self.Y, True, self.classes)
             except Exception as e:
               print('{}: got error: {}'.format(name, traceback.format_exc()))
 
@@ -128,24 +129,25 @@ class ClassificationProcessor():
         # create object
         model = self.models[model_name]
         efs = EFS(model, min_features=1,
-           max_features=10,scoring='accuracy',print_progress=True,cv=skf)
+           max_features=2,scoring='accuracy',print_progress=True,cv=skf)
         efs = efs.fit(self.X, self.Y, custom_feature_names=self.feature_names)
         # print selected features
         best_idx = efs.best_idx_
         print('Best accuracy score: {:.3f}'.format(efs.best_score_))
         print('Best subset (indices): {}'.format(efs.best_idx_))
         print('Best subset (corresponding names):{}'.format(efs.best_feature_names_)) 
-        self.train_evaluate_model(model_name, model, loo, self.X[:, best_idx], self.Y, True)
+        self.train_evaluate_model(model_name, model, loo, self.X[:, best_idx], self.Y, True, self.classes)
         self.used_feature_indx = best_idx
     
-    def feature_selection(self, model_name: str):
-        model = self.models[model_name]
-        feature_selection_result = {}
-        for i in range(1,15):
-            X = self.X[:, 0:i]
-            class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, skf, X, self.Y, False)
-            feature_selection_result[i] = [class0_acc, class1_acc, class2_acc]
-        plot.plot_feature_selection_curve(feature_selection_result)
+    def feature_selection(self, model_name:str, x_test):
+        selected_estimator = self.models[model_name]
+        sel_ = SelectFromModel(selected_estimator)
+        sel_.fit(self.X, self.Y)
+        selected_feature_names = sel_.get_feature_names_out(self.feature_names)
+        x_train_selected = sel_.transform(self.X)
+        x_test_selected = sel_.transform(x_test)
+        return x_train_selected, x_test_selected, selected_feature_names
+        
 
     ### final model
     def final_model(self, classifier, X_test, y_test):
@@ -156,6 +158,7 @@ class ClassificationProcessor():
         # roc_auc.make_roc_auc(classes,X_test, y_test, y_proba)
         cfm = confusion_matrix(y_test, y_pred)
         print(cfm)
+        plot.plot_confusion_matrix('confusion matrix', cfm, classes=classes)
 
 
 '''
@@ -172,10 +175,19 @@ class ClassificationProcessor():
         self.models['ensamble_knn_rf'] = model
         return model
     
-    def final_model(self, model_name: str, feature_list: list[int]):
+    def final_model(self, model_name: str, feature_list: List[int]):
         class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y, kappa = self.train_evaluate_model(model_name, self.models[model_name], loo, self.X[:, feature_list], self.Y, True)
         self.feature_names = list(self.feature_names[i] for i in feature_list)
         self.used_feature_indx = feature_list
         return accuracies, pred_y, prob_y, class0_acc, class1_acc, class2_acc, kappa
+    
+    def feature_selection(self, model_name: str):
+        model = self.models[model_name]
+        feature_selection_result = {}
+        for i in range(1,15):
+            X = self.X[:, 0:i]
+            class0_acc, class1_acc, class2_acc, accuracies, pred_y, prob_y = self.train_evaluate_model(model_name +'with '+ str(i) + ' features', model, skf, X, self.Y, False, self.classes)
+            feature_selection_result[i] = [class0_acc, class1_acc, class2_acc]
+        plot.plot_feature_selection_curve(feature_selection_result)
 
 '''
