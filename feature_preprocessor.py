@@ -3,10 +3,10 @@ import raw_data_preprocessing as rdp
 from scipy import stats
 from pandas import DataFrame
 from sklearn.experimental import enable_iterative_imputer 
-from sklearn.impute import IterativeImputer
-from sklearn.linear_model import BayesianRidge
+from sklearn.preprocessing import OrdinalEncoder
 import individual_differences_plot as plot
 import pandas as pd
+import numpy as np
 
 class FeatureProcessor:
     @staticmethod
@@ -28,12 +28,20 @@ class FeatureProcessor:
             self.feature_cate_names = rdp.feature_col_categ_names.copy()
         self.feature_col_conti_names = rdp.feature_col_conti_names.copy()
 
+#### Data clearning
+
     # Feature missing data
     def delete_missing_rows(self, crtieria: int):
         print('Original length of data is : {}'.format(len(self.data)))
         self.data = self.data[self.data[self.feature_col_names].isnull().sum(axis=1) < crtieria]
         print('Delete rows have >= crtieria missing values in features')
         print('The data length now is :{}'.format(len(self.data))) 
+
+    def make_ordinary_var(self, target_col_name: str, categories):
+        enc = OrdinalEncoder(categories=[categories], handle_unknown= 'use_encoded_value', unknown_value=np.nan)
+        x = self.data[[target_col_name]]
+        b = enc.fit_transform(x)
+        self.data[target_col_name] = pd.Series(b[:,0])
 
     # Create dummy variables for categorical vars
     def make_dummy(self):
@@ -52,29 +60,5 @@ class FeatureProcessor:
 
     # Feature distribution
     def distri_features(self):
-        plot.plot_distribution(self.data, self.feature_col_conti_names)   
-
-    def features_impute_missing(self):
-        # summarize the number of rows with missing values for each column
-        for i in range(len(self.feature_col_names)):
-	    # count number of rows with missing values
-            feature = self.feature_col_names[i]
-            n_miss = self.data[feature].isnull().sum()
-            perc = n_miss / self.data.shape[0] * 100
-            print('Feature {} missing counts: {}({:.1f} %)'.format(feature, n_miss, perc))
-        # define imputer
-        imputer = IterativeImputer(estimator=BayesianRidge(), n_nearest_features=None, imputation_order='ascending')
-        self.data[self.feature_col_names] = imputer.fit_transform(self.data[self.feature_col_names])
-        # print total missing
-        print('============Finish impute missing values in features=============')
-
+        plot.plot_distribution(self.data, self.feature_col_conti_names)
         
-
-# Discretize continuous features
-    def discretize_features(self):
-        # sleep, score > 11 means the level of sleepiness may impact a person’s activities 
-        self.data['z_SES_category'] = pd.cut(x = self.data['z_SES'], bins = [-1.8,-0.5,0.8,2], labels = ['low_ses', 'middle_ses', 'high_ses'])
-        # vgq, >20h means play more vg in the past year
-        median = self.data['VGQ_pastyear'].median()
-        self.data['VGQ_pastyear_category'] = pd.cut(x = self.data['VGQ_pastyear'], bins = [5,median,32], labels = ['less_play', 'more_play'])
-        self.feature_cate_names = ['SES_category', 'VGQ_category']
