@@ -7,9 +7,10 @@ from yellowbrick.cluster import KElbowVisualizer
 from sklearn.preprocessing import StandardScaler
 import scipy.cluster.hierarchy as sch
 import numpy as np
+from typing import List
 
 class ClusterModel:
-    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+    def __init__(self, n_clusters: int, clustering_col_names: List[str]):
         self.n_clusters = n_clusters
         self.cluster_method = None
         self.random_state = 0
@@ -37,7 +38,7 @@ class ClusterModel:
     
 
 class Kmeans(ClusterModel):
-    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+    def __init__(self, n_clusters: int, clustering_col_names: List[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
         self.cluster_method = KMeans(n_clusters=self.n_clusters, random_state=self.random_state)
         self.cluster_name = 'Kmeans_' + str(n_clusters)
@@ -47,7 +48,7 @@ class Kmeans(ClusterModel):
         print('The cluster centers are: {}'.format(self.cluster_method.fit(input_x).cluster_centers_))
 
 class EM(ClusterModel):
-    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+    def __init__(self, n_clusters: int, clustering_col_names: List[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
         self.cluster_method = GaussianMixture(n_components=self.n_clusters, random_state=self.random_state)
         self.cluster_name = 'EM_' + str(n_clusters)
@@ -61,7 +62,7 @@ class EM(ClusterModel):
         return input_x
 
 class Hierarchical(ClusterModel):
-    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+    def __init__(self, n_clusters: int, clustering_col_names: List[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
         self.cluster_method = AgglomerativeClustering(n_clusters=self.n_clusters, affinity = 'euclidean', linkage = 'ward')
         self.cluster_name = 'hierar_' + str(n_clusters)
@@ -75,7 +76,7 @@ class DensityBased(ClusterModel):
     Class utilizes density-based clustering (DBSCAN)
     Parameter takes in ClusterModel
     """
-    def __init__(self, n_clusters: int, clustering_col_names: list[str]):
+    def __init__(self, n_clusters: int, clustering_col_names: List[str]):
         ClusterModel.__init__(self, n_clusters, clustering_col_names)
         self.cluster_method = DBSCAN(eps=0.4, min_samples=30, metric='euclidean')
         self.cluster_name = 'dense_' + str(n_clusters)

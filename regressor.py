@@ -5,15 +5,16 @@ from scipy import log
 import pwlf
 import individual_differences_plot as plot
 from sklearn.metrics import mean_squared_error
+from typing import List
 
 # Base Regressor. Do not use. Use Derived Regressors.
 class Regressor:
     def __init__(self):
         self.regression_func = None
-        self.parameter_names: list[str] = None
-        self.clustering_parameters: list[str] = None
+        self.parameter_names: List[str] = None
+        self.clustering_parameters: List[str] = None
 
-    def set_clustering_parameters(self, clustering_parameters: list[str]):
+    def set_clustering_parameters(self, clustering_parameters: List[str]):
         if clustering_parameters is None:
             self.clustering_parameters = self.parameter_names.copy()
             return
@@ -65,7 +66,7 @@ class Regressor:
 
 #https://courses.lumenlearning.com/ivytech-collegealgebra/chapter/build-a-logarithmic-model-from-data/
 class LogRegressor(Regressor):
-    def __init__(self, clustering_parameters: list[str] = None):
+    def __init__(self, clustering_parameters: List[str] = None):
         Regressor.__init__(self)
         self.regression_func = lambda x, s, b: s * log(x) + b
         self.parameter_names = ['log_slope', 'log_bias']
@@ -73,7 +74,7 @@ class LogRegressor(Regressor):
         self.set_clustering_parameters(clustering_parameters)
 
 class LinearRegressor(Regressor):
-    def __init__(self, clustering_parameters: list[str] = None):
+    def __init__(self, clustering_parameters: List[str] = None):
         Regressor.__init__(self)
         self.regression_func = lambda x, s, b: s * x + b
         self.parameter_names = ['linear_slope', 'linear_bias']
@@ -81,7 +82,7 @@ class LinearRegressor(Regressor):
         self.set_clustering_parameters(clustering_parameters)
 
 class PiecewiselinRegressor(Regressor):
-    def __init__(self, clustering_parameters: list[str] = None):
+    def __init__(self, clustering_parameters: List[str] = None):
         Regressor.__init__(self)
         self.parameter_names = ['knot', 'slope1', 'slope2','turning_value']
         self.clustering_parameters = []
@@ -89,7 +90,7 @@ class PiecewiselinRegressor(Regressor):
     
     # Use a library based on https://jekel.me/piecewise_linear_fit_py/pwlf.html
     # Before running, pip install pwlf
-    def find_opt_knot(self, x, y) -> list[int]:
+    def find_opt_knot(self, x, y) -> List[int]:
         # Set different knot locations
         pwlf_each_row = pwlf.PiecewiseLinFit(x, y)
         r2_all_knots = {}

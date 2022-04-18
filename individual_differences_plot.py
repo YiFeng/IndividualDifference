@@ -6,6 +6,7 @@ import seaborn as sns
 import itertools
 import learning_curve as lc
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
+from typing import List
         
 plot_folder_loc = '/datasets/googledrive/Yi_UCI_research/GSR other works/2020 Summer_predict individual training/plot'
 colors = ['#e87033','#7868a2','#3e8410','#0F9D58','m', 'y', 'k', 'w']
@@ -26,7 +27,7 @@ def piecewise_lin_plot(x,y, pwlf, index):
     plt.savefig(plot_folder_loc + '/piece_wise/fit_' + str(index) + '.png')
 
 # plot cluster result
-def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], column_name: str):
+def plot_cluster_result(data: DataFrame, intervention_col_names: List[str], column_name: str):
     df_cluster_type_list = []
     for i in range(len(data[column_name].unique())):
         t = data[data[column_name] == i][intervention_col_names]
@@ -66,7 +67,7 @@ def plot_cluster_result(data: DataFrame, intervention_col_names: list[str], colu
     fig.show()
 
 # plot scatter plot for clustering
-def plot_scatter_cluster(data: DataFrame, plot_col: list[str], label_name: str):
+def plot_scatter_cluster(data: DataFrame, plot_col: List[str], label_name: str):
     fig, ax = plt.subplots(figsize=(9,10))
     for i in range(len(data[label_name].unique())):
         x = data[plot_col[0]][data[label_name]==i]
@@ -80,7 +81,7 @@ def plot_scatter_cluster(data: DataFrame, plot_col: list[str], label_name: str):
         fig.show()
 
 # bar plot   
-def bar_plot_cluster(data: DataFrame, clustering_col_names: list[str], label_name: str):
+def bar_plot_cluster(data: DataFrame, clustering_col_names: List[str], label_name: str):
     for i in clustering_col_names:
         fig, ax = plt.subplots(figsize=(6,5))
         ax = sns.barplot(x=label_name, y=i, data=data, palette=colors)
@@ -88,7 +89,7 @@ def bar_plot_cluster(data: DataFrame, clustering_col_names: list[str], label_nam
 
 # plot features
 # distribution of features
-def plot_distribution(data: DataFrame, plot_col: list[str]):
+def plot_distribution(data: DataFrame, plot_col: List[str]):
     for feature in plot_col:
         fig, ax = plt.subplots()
         ax.hist(data[feature])
@@ -96,7 +97,7 @@ def plot_distribution(data: DataFrame, plot_col: list[str]):
 
 
 # category features & label
-def cate_bar_plot(data: DataFrame, plot_col: list[str]):
+def cate_bar_plot(data: DataFrame, plot_col: List[str]):
     for feature in plot_col:
         df_plot = data.groupby(['label', feature]).size().reset_index().pivot(columns='label', index=feature, values=0)
         df_plot.plot(kind='bar', stacked=True)

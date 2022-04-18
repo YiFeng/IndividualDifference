@@ -21,6 +21,7 @@ import pickle
 import os.path as path
 import statsmodels.api as sm
 from statsmodels.formula.api import ols
+from typing import Dict
 
 
 class ClassifyPreprocessor:

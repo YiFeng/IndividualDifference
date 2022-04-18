@@ -2,18 +2,19 @@ import pandas as pd
 from pandas import DataFrame
 import pingouin as pg
 from scipy.stats import kendalltau, pearsonr, spearmanr
+from typing import List
 
 # Features that are used for training
-feature_col_conti_names: list[str] = [
+feature_col_conti_names: List[str] = [
     'MR_accpre', 'WM_Zpre', 'IC_Zreverse_pre','NT_Zpre',\
     'TCA_Zscore','CFQMALscore','Avg_grit_amb',\
     'NEOFFIExtraversion','NEOFFIAgreeableness', 'NEOFFIConscientiousness', 'NEOFFIEmotionalstability', 'NEOFFIIntellectorOpenness',\
     'VGQHoursCategorySumPastYear_Z','ParentalEducationSum','SelfReportedSESRatingSum',\
     'Physicalhealth','Physicalfitness','Psychohealth']
 
-feature_col_categ_names: list[str] = ['Gamified','Difficulty','Bilingual']
+feature_col_categ_names: List[str] = ['Gamified','Difficulty','Bilingual']
 feature_col_names = feature_col_conti_names + feature_col_categ_names
-demographic_columns: list[str] = ['Gender','Ethnicity','HispanicLatino']
+demographic_columns: List[str] = ['Gender','Ethnicity','HispanicLatino']
 intervention_col_names = ['mean_' + str(i) for i in range(1,11)]
 valid_col_names = ['nback_training']
 
@@ -50,7 +51,7 @@ def descriptive_info(no_missing_data):
     return description_result
 
 '''
-feature_col_names: list[str] = [
+feature_col_names: List[str] = [
     'MR_accpre', 'WM_Zpre', 'IC_Zreverse_pre','NT_Zpre',\
     'TCA_Zscore','CFQMALscore','Avg_grit_amb',\
     'NEOFFIExtraversion','NEOFFIAgreeableness', 'NEOFFIConscientiousness', 'NEOFFIEmotionalstability', 'NEOFFIIntellectorOpenness',\

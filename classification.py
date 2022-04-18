@@ -6,12 +6,14 @@ import multi_class_ovo_curve as roc_auc
 import numpy as np
 import classification_preprocessor as cp
 import pandas as pd
+from typing import List
 
 # cross validation setting
 from sklearn.model_selection import LeaveOneOut, KFold, StratifiedKFold
 loo = LeaveOneOut()
 kfold = KFold(n_splits=10, shuffle=True, random_state=0)
 skf = StratifiedKFold(n_splits=10, shuffle=True,random_state=0)
+
 
 # models setting
 from sklearn.linear_model import LogisticRegression

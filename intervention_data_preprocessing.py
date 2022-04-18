@@ -8,10 +8,11 @@ import statsmodels
 from statsmodels.stats.stattools import medcouple
 import math
 from math import e
+from typing import List
 
 class InterventionProcessor:
     @staticmethod
-    def get_intervention_data(no_missing_data: DataFrame, intervention_col_names: list[str]) -> DataFrame:
+    def get_intervention_data(no_missing_data: DataFrame, intervention_col_names: List[str]) -> DataFrame:
         col_add_id = intervention_col_names.copy()
         col_add_id.insert(0, 'Unique')
         return no_missing_data[col_add_id]
@@ -19,7 +20,7 @@ class InterventionProcessor:
     def __init__(self, no_missing_data):
         self.intervention_col_names = ['mean_' + str(i) for i in range(1,11)]
         self.data: DataFrame = self.get_intervention_data(no_missing_data, self.intervention_col_names)
-        self.regressors: list[Regressor] = []
+        self.regressors: List[Regressor] = []
         self.generated_col_names: set[str] = set()
         self.clustering_col_names: set[str] = set()
         self.clustering_model = None
@@ -52,7 +53,7 @@ class InterventionProcessor:
         self.get_mean()
 
     
-    def mark_outlier_stewd(self, option: list[str]):
+    def mark_outlier_stewd(self, option: List[str]):
         self.data['outlier'] = False
         for col in option:
             if col not in self.data.columns:
@@ -74,7 +75,7 @@ class InterventionProcessor:
                     self.data['outlier'].iloc[i] = True
             print(self.data[self.data['outlier']])
     
-    def mark_outlier_zscore(self, option: list[str]):
+    def mark_outlier_zscore(self, option: List[str]):
         self.data['outlier'] = False
         for col in option:
             if col not in self.data.columns:
