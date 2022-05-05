@@ -8,7 +8,7 @@ import learning_curve as lc
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
         
 plot_folder_loc = '/datasets/googledrive/Yi_UCI_research/GSR other works/2020 Summer_predict individual training/plot'
-colors = ['#ef8a62','#2c7bb6','#d7191c','#0F9D58','m', 'y', 'k', 'w']
+colors = ['#e87033','#7868a2','#3e8410','#0F9D58','m', 'y', 'k', 'w']
 # https://loading.io/color/feature/
 cmap = ListedColormap(colors)
 

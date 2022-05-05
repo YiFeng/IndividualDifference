@@ -46,10 +46,24 @@ class ClassifyPreprocessor:
         y = data[self.label_name].to_numpy()
         return x, y    
                     
+    def features_impute_missing(self):
+        # summarize the number of rows with missing values for each column
+        for i in range(len(self.feature_names)):
+	    # count number of rows with missing values
+            feature = self.feature_names[i]
+            n_miss = self.data[feature].isnull().sum()
+            perc = n_miss / self.data.shape[0] * 100
+            print('Feature {} missing counts: {}({:.1f} %)'.format(feature, n_miss, perc))
+        # define imputer
+        imputer = IterativeImputer(estimator=BayesianRidge(), n_nearest_features=None, random_state=0, imputation_order='ascending')
+        self.data[self.feature_names] = imputer.fit_transform(self.data[self.feature_names])
+        # print total missing
+        print('============Finish impute missing values in features=============')
+    
     def split_train_test(self):
         # split a seperate testset
         y = self.data[self.label_name].to_numpy()
-        df_train, df_test = train_test_split(self.data, test_size=0.20, random_state=42, stratify=y) 
+        df_train, df_test = train_test_split(self.data, test_size=0.20, random_state=0, stratify=y) 
         self.data_length = len(df_train)
         print('The length of training set before resample: {}'.format(len(df_train)))
         print('The length of test set: {}'.format(len(df_test)))
@@ -63,55 +77,60 @@ class ClassifyPreprocessor:
         scaler = StandardScaler()
         scaler.fit(x_train_numerical)
         mean_train = scaler.mean_
-        std_train = scaler.mean_
-        return mean_train, std_train
-    
-    def features_impute_missing(self, df_train):
-        # summarize the number of rows with missing values for each column
-        for i in range(len(self.feature_names)):
-	    # count number of rows with missing values
-            feature = self.feature_names[i]
-            n_miss = df_train[feature].isnull().sum()
-            perc = n_miss / df_train.shape[0] * 100
-            print('Feature {} missing counts: {}({:.1f} %)'.format(feature, n_miss, perc))
-        # define imputer
-        imputer = IterativeImputer(estimator=BayesianRidge(), n_nearest_features=None, imputation_order='ascending')
-        df_train[self.feature_names] = imputer.fit_transform(df_train[self.feature_names])
-        # print total missing
-        print('============Finish impute missing values in features=============')
-        return df_train
+        std_train = scaler.var_
+        return mean_train, std_train   
 
     def standardize_numerical(self, df_train_imputed, df_test, mean, std):
         # Standardize numerical features
         ### training set
-        df_train_imputed.iloc[:,0:len(mean)] = (df_train_imputed.iloc[:,0:len(mean)] - mean)/std
+        df_train_scaled = df_train_imputed.copy()
+        df_train_scaled.iloc[:,0:len(mean)] = (df_train_scaled.iloc[:,0:len(mean)] - mean)/std
         ### test set
-        df_test.iloc[:,0:len(mean)] = (df_test.iloc[:,0:len(mean)] - mean)/std
+        df_test_scaled = df_test.copy()
+        df_test_scaled.iloc[:,0:len(mean)] = (df_test_scaled.iloc[:,0:len(mean)] - mean)/std
         print('============Finish standardize train and test features=============')
-        return df_train_imputed, df_test
+        return df_train_scaled, df_test_scaled
     
-    def feature_selection(self, df_train, k: int):
-        x,y = self.transform_df_toarray(df_train, self.feature_names)
-        fs = SelectKBest(score_func=mutual_info_classif, k=k)
+    def feature_selection(self, df_train_scaled, k: int):
+        x,y = self.transform_df_toarray(df_train_scaled, self.feature_numerical_names)
+        ### feature selection using Mutual Information (https://towardsdatascience.com/learn-how-to-do-feature-selection-the-right-way-61bca8557bef)
+        discrete_feature_indices = list(range(len(self.feature_numerical_names), len(self.feature_names)))
+        ## mi_value = mutual_info_classif(x, y, discrete_features=discrete_feature_indices, n_neighbors=5, copy=True, random_state=0)        
+        fs = SelectKBest(score_func=f_classif, k='all')
         fs.fit(x,y)
-        fs_result = {}
-        for i in range(len(fs.scores_)):
-            fs_result[self.feature_names[i]] = fs.scores_[i]
-        fs_result = dict(sorted(fs_result.items(), key=lambda item: item[1], reverse=True))
-        for key, value in fs_result.items():
-            print(key, value)
-        print('The top {} features are: {}'.format(k, list(fs_result.keys())[:k]))
-        self.feature_names = list(fs_result.keys())[:k] 
-    
-    def resample_train(self, df_train_imputed, target_sample_weight: Dict[str,int], oversample:bool):
-        x_train, y_train = self.transform_df_toarray(df_train_imputed, self.feature_names)
+        importance_result = pd.DataFrame()
+        importance_result['feature'] = self.feature_numerical_names
+        importance_result['score'] = fs.scores_
+        importance_result['pvalue'] = fs.pvalues_
+        importance_result.sort_values(by=['score'], ascending=False, inplace=True)
+        print('The features importance are: \n {}'.format(importance_result))
+        self.feature_numerical_names = list(importance_result['feature'].head(k)) 
+
+    def feature_selection_cate(self, df_train_scaled, k:int):
+        x,y = self.transform_df_toarray(df_train_scaled, self.feature_cate_names)
+        ### feature selection using Mutual Information (https://towardsdatascience.com/learn-how-to-do-feature-selection-the-right-way-61bca8557bef)
+        ## mi_value = mutual_info_classif(x, y, discrete_features=discrete_feature_indices, n_neighbors=5, copy=True, random_state=0)        
+        fs = SelectKBest(score_func=chi2,k='all')
+        fs.fit(x,y)
+        importance_result = pd.DataFrame()
+        importance_result['feature'] = self.feature_cate_names
+        importance_result['score'] = fs.scores_
+        importance_result['pvalue'] = fs.pvalues_
+        importance_result.sort_values(by=['score'], ascending=False, inplace=True)
+        print('The top features are: \n{}'.format(importance_result))
+        self.feature_cate_names = list(importance_result['feature'].head(k)) 
+   
+    def resample_train(self, df_train_scaled, target_sample_weight: dict[str,int], oversample:bool):
+        self.feature_names = self.feature_cate_names + self.feature_numerical_names
+        x_train, y_train = self.transform_df_toarray(df_train_scaled, self.feature_names)
         if oversample:
             oversample = SMOTE(sampling_strategy=target_sample_weight, random_state=42)
             features_resample, labels_resample = oversample.fit_resample(x_train, y_train)
-            print('The sample weight after resample: {}'.format(Counter(labels_resample)))
+            print('The sample weight after resample: {}'.format(Counter(labels_resample)))         
             print('============Finish resample train set=============')
         else:
             features_resample, labels_resample = x_train, y_train
+        print('The input shape: {} and {}'.format(features_resample.shape, labels_resample.shape))
         return features_resample, labels_resample
     
     def save_data(self, x_train, y_train, df_test_standard, data_path: str):
