@@ -107,7 +107,7 @@ class PiecewiselinRegressor(Regressor):
     def fit_row(self, x, y, index):
         result = {}
         if self.is_unchanged_input(y):
-            result['parameters'] = [np.nan] * len(self.parameter_names)
+            result['parameters'] = [0] * len(self.parameter_names)
             result['r2'] = np.nan
             return result
         opt_knot = self.find_opt_knot(x, y)

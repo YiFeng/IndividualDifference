@@ -103,7 +103,7 @@ class InterventionProcessor:
             print('The average r2 for {} is: {:.3f}'.format(type(r), np.nanmean(rsquare)))
             print('The num of objects can not fit by pwlf: {}'.format(self.data.isna().sum()))
             self.data = self.data.dropna(subset=['r2'])
-            print('The sample size that can fit with pwlf: {}'.format(len(self.data)))
+            print('The sample size that can fit with pwlf: {}'.format(len(self.data.dropna(subset=['r2']))))
     
     ####Cluster 
     def register_cluster_model(self, cluster: ClusterModel):
