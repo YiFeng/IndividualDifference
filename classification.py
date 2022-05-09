@@ -9,9 +9,9 @@ import pandas as pd
 
 # cross validation setting
 from sklearn.model_selection import LeaveOneOut, KFold, StratifiedKFold
-loo = LeaveOneOut()
-kfold = KFold(n_splits=10, shuffle=True, random_state=0)
-skf = StratifiedKFold(n_splits=10, shuffle=True,random_state=0)
+LOO = LeaveOneOut()
+KFOLD = KFold(n_splits=10, shuffle=True, random_state=0)
+SKF = StratifiedKFold(n_splits=10, shuffle=True,random_state=0)
 
 # models setting
 from sklearn.linear_model import LogisticRegression
@@ -111,7 +111,7 @@ class ClassificationProcessor():
     def model_selection(self, feature_num: int):
         for name, clf in self.models.items():
             try:
-              self.train_evaluate_model(name, clf, skf, self.X[:, 0:feature_num], self.Y, True, self.classes)
+              self.train_evaluate_model(name, clf, SKF, self.X[:, 0:feature_num], self.Y, True, self.classes)
             except Exception as e:
               print('{}: got error: {}'.format(name, traceback.format_exc()))
 
@@ -152,52 +152,37 @@ class ClassificationProcessor():
     
     ###### Using SHaP value to explain how features contribute to prediction model
     ###### See detail:https://shap.readthedocs.io/en/latest/index.html      
-    def shap_kernel(self, model_name: str, data_path):
-        shap_all = []
-        expected_all = []
-        X = self.X
-        for train, val in skf.split(X, self.Y):
-            model = self.models[model_name]
-            model.fit(X[train], self.Y[train])
-            #shap
-            explainer=shap.KernelExplainer(model.predict_proba, X[train])
-            shap_values = explainer.shap_values(X[val])
-            print(explainer.expected_value)
-            shap_all.append(shap_values)
-            expected_all.append(explainer.expected_value)
-        # save shap
-        save_data(data_path, shap_all, 'shap_values.data')
-        save_data(data_path, expected_all,'shap_expected.data')
-
-    def shap_tree_cross(self, model_name: str, data_path):
-        shap_all = []
-        expected_all = []
-        for train, val in skf.split(self.X, self.Y):
-            print(train, val)
-            model = self.models[model_name]
-            model.fit(self.X[train], self.Y[train])
-            #shap
-            explainer=shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(self.X[val])
-            print(explainer.expected_value)
-            shap_all.append(shap_values)
-            expected_all.append(explainer.expected_value)
-        # save shap
-        save_data(data_path, shap_all, 'shap_values.data')
-        save_data(data_path, expected_all,'shap_expected.data')
-
-    
-    def shap_tree(self, model_name: str, x_test, data_path):
-        model = self.models[model_name]
-        model.fit(self.X, self.Y)
-        #shap
-        explainer=shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(x_test)
-        expected_value = explainer.expected_value
-        print(explainer.expected_value)
-        # save shap
-        save_data(data_path, shap_values, 'shap_tree_values.data')
-        save_data(data_path, expected_value,'shap_tree_expected.data')
+    def compute_shap_cv(self, model_name: str, shap_method: str, save_data_path):
+        shap_all = [] #ndarray (num of folds, (num of sample, num of feature))
+        expected_all = [] #ndarray
+        shap_index_match_original = [] #list
+        if shap_method == 'kernel':        
+            for train, val in SKF.split(self.X, self.Y):
+                model = self.models[model_name]
+                model.fit(self.X[train], self.Y[train])
+                #shap
+                explainer=shap.KernelExplainer(model.predict_proba, self.X[train])
+                shap_values = explainer.shap_values(self.X[val])
+                shap_all.append(shap_values)
+                expected_all.append(explainer.expected_value)
+                for i in val:
+                    shap_index_match_original.append(i)
+        else: 
+            for train, val in SKF.split(self.X, self.Y):
+                model = self.models[model_name]
+                model.fit(self.X[train], self.Y[train])
+                #shap
+                explainer=shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(self.X[val])
+                shap_all.append(shap_values)
+                expected_all.append(explainer.expected_value)
+                for i in val:
+                    shap_index_match_original.append(i)
+        #save data
+        print('The orinial len is {}'.format(len(shap_index_match_original)))
+        save_data(data_path, shap_all, 'shap_values.ndarray')
+        save_data(data_path, expected_all,'shap_expected.ndarray')
+        save_data(data_path, shap_index_match_original,'orig_index.list')
 
     def read_shap(self, shap_all, class_index):
         shap_array = np.array(shap_all)
@@ -205,7 +190,7 @@ class ClassificationProcessor():
         shap_class = np.concatenate(shap_class, axis=0)
         return shap_class
 
-    def return_correct_index(self, array):
+    def return_correct_prediction_index(self, array):
         index_tuple = np.where(array[:self.data_len_original] == 1)
         list_index = [item for t in index_tuple for item in t]
         return list_index
@@ -218,21 +203,33 @@ class ClassificationProcessor():
             plot.scatter_plot_shap(feature, shap_feature, class_index, self.feature_names[j])
 
     # visualize
-    def shap_visualize(self, shap_all, expected_all, selected_feature_names):
+    def shap_visualize(self, shap_all, expected_all, orig_index_list):
         # each class shap
-        sub_index_list = list(range(self.data_len_original))
-        print(len(sub_index_list))
-        sub_index_list
         shap_all_class = []
-        X_selected_feature = self.X[sub_index_list]
+        X_original_features = self.X[:self.data_len_original]
         for class_index in range(2):
             shap_class = self.read_shap(shap_all, class_index)
-            shap.summary_plot(shap_class[sub_index_list], X_selected_feature, feature_names=selected_feature_names)
+            print(shap_class.shape())
+            shap.summary_plot(shap_class[orig_index_list], X_original_features, feature_names=self.feature_names)
             shap_all_class.append(shap_class)
         
         # shap summary
-        shap.summary_plot(shap_all_class, X_selected_feature, plot_type="bar", 
-                          feature_names=selected_feature_names, color=plot.cmap, class_inds=[0,1])
+        shap.summary_plot(shap_all_class, X_original_features, plot_type="bar", 
+                          feature_names=self.feature_names, color=plot.cmap, class_inds=[0,1])
         # each feature shap
         for i in range(2):
-            self.shap_feature(shap_all_class, X_selected_feature, sub_index_list, i)
+            self.shap_feature(shap_all_class, X_original_features, sub_index_list, i)
+
+    '''
+    def shap_nocv(self, model_name: str, x_test, data_path):
+        model = self.models[model_name]
+        model.fit(self.X, self.Y)
+        #shap
+        explainer=shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(x_test)
+        expected_value = explainer.expected_value
+        print(explainer.expected_value)
+        # save shap
+        save_data(data_path, shap_values, 'shap_tree_values.data')
+        save_data(data_path, expected_value,'shap_tree_expected.data')
+    '''
